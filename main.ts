@@ -1,6 +1,8 @@
 import { app, BrowserWindow, screen } from 'electron';
 import * as path from 'path';
 import * as url from 'url';
+import { FSUIPCInterface } from './fsuipc';
+import { registerIPC } from './ipc';
 
 let win: BrowserWindow = null;
 const args = process.argv.slice(1),
@@ -42,6 +44,8 @@ function createWindow(): BrowserWindow {
     }));
   }
 
+  registerIPC();
+
   // Emitted when the window is closed.
   win.on('closed', () => {
     // Dereference the window object, usually you would store window
@@ -81,3 +85,7 @@ try {
   // Catch Error
   // throw e;
 }
+
+
+
+export const FSUIPCApi = new FSUIPCInterface();

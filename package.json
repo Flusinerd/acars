@@ -40,7 +40,13 @@
     "version": "conventional-changelog -i CHANGELOG.md -s -r 0 && git add CHANGELOG.md",
     "lint": "ng lint"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@fsuipc/api": "0.4.0",
+    "@types/electron": "1.6.10",
+    "fsuipc": "0.3.0",
+    "ngx-foundation": "1.0.8",
+    "vm2": "3.9.2"
+  },
   "devDependencies": {
     "@angular-builders/custom-webpack": "10.0.1",
     "@angular-devkit/build-angular": "0.1100.3",
@@ -49,7 +55,7 @@
     "@angular-eslint/eslint-plugin-template": "0.8.0-beta.3",
     "@angular-eslint/schematics": "0.8.0-beta.3",
     "@angular-eslint/template-parser": "0.8.0-beta.3",
-    "@angular/cli": "11.0.3",
+    "@angular/cli": "11.1.1",
     "@angular/common": "11.0.3",
     "@angular/compiler": "11.0.3",
     "@angular/compiler-cli": "11.0.3",
@@ -74,6 +80,7 @@
     "cross-env": "7.0.2",
     "electron": "11.0.3",
     "electron-builder": "22.9.1",
+    "electron-rebuild": "2.3.4",
     "electron-reload": "1.5.0",
     "eslint": "7.13.0",
     "eslint-plugin-import": "2.22.1",
@@ -93,7 +100,7 @@
     "ts-node": "9.1.0",
     "tslib": "2.0.3",
     "typescript": "4.0.5",
-    "wait-on": "5.0.1",
+    "wait-on": "5.2.1",
     "webdriver-manager": "12.1.7",
     "zone.js": "0.10.3"
   },

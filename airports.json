@@ -1,0 +1,16 @@
+{
+  "eddf": {
+    "lat": 50.02640152,
+    "long": 8.54312992,
+    "name": "Frankfurt/Main",
+    "iata": "FRA",
+    "elevation": 364
+  },
+  "eddl": {
+    "lat": 51.28950119,
+    "long": 6.7667798999999995,
+    "name": "Düsseldorf",
+    "iata": "DUS",
+    "elevation": 147
+  }
+}
