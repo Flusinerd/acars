@@ -12,9 +12,11 @@ import { TranslateModule, TranslateLoader } from '@ngx-translate/core';
 import { TranslateHttpLoader } from '@ngx-translate/http-loader';
 
 import { HomeModule } from './home/home.module';
-import { DetailModule } from './detail/detail.module';
+import { LiveMapModule } from './live-map/live-map.module';
+import { FreeFlightModule } from './free-flight/free-flight.module';
 
 import { AppComponent } from './app.component';
+import { LeafletModule } from '@asymmetrik/ngx-leaflet';
 
 // AoT requires an exported function for factories
 export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
@@ -30,7 +32,8 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
     CoreModule,
     SharedModule,
     HomeModule,
-    DetailModule,
+    FreeFlightModule,
+    LiveMapModule,
     AppRoutingModule,
     TranslateModule.forRoot({
       loader: {
@@ -38,7 +41,8 @@ export function HttpLoaderFactory(http: HttpClient): TranslateHttpLoader {
         useFactory: HttpLoaderFactory,
         deps: [HttpClient]
       }
-    })
+    }),
+    LeafletModule
   ],
   providers: [],
   bootstrap: [AppComponent]

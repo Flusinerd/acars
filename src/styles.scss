@@ -30,3 +30,110 @@ h1, h2, h3, h4, h5, h6 {
 .light {
   color: #a3a3a3;
 }
+
+div.input-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  position: relative;
+  margin-bottom: 16px;
+
+  span.error-text{
+    font-size: 12px;
+    font-family: "Montserrat", sans-serif;
+    font-weight: 400;
+    color: #ff4646;
+    margin-top: 2px;
+    display: none;
+  }
+
+  input, textarea {
+    width: calc(100% - 4px);
+    border: none;
+    border-bottom: 1px solid #f8f9fa;
+    background: none;
+    color: #ffffff;
+    transition: all 200ms ease;
+
+    font-family: "Montserrat", sans-serif;
+    font-size: 16px;
+
+    z-index: 1;
+  }
+
+  input.ng-invalid:not(.ng-pristine), textarea.ng-invalid:not(.ng-pristine) {
+    border-bottom: 1px solid #ff4646;
+  }
+
+  input.ng-invalid:not(.ng-pristine) ~ span.error-text, textarea.ng-invalid:not(.ng-pristine) ~ span.error-text {
+    display: inline;
+  }
+
+  input:focus, textarea:focus {
+    border-bottom: 1px solid #4545ff;
+    outline: none;
+  }
+
+  input:focus ~ label, textarea:focus ~ label {
+    color: #ffffff;
+  }
+
+  input:focus ~ label, input:not(:placeholder-shown) ~ label, textarea:focus ~ label, textarea:not(:placeholder-shown) ~ label {
+    transform: translate3d(0,-20px,0) scale(.75);
+  }
+
+
+  label{
+    font-family: "Montserrat", sans-serif;
+    font-weight: 500;
+    color: #9a9a9a;
+    position: absolute;
+
+    transition: all 200ms ease-in-out;
+
+    transform-origin: 0 0;
+    transform: translate3d(0,0,0);
+  }
+}
+
+div.row {
+  display: flex;
+  flex-direction: row;
+
+  div.input-group{
+    margin-left: 24px;
+  }
+
+  div.input-group:first-child {
+    margin-left: 0px;
+  }
+}
+
+button {
+  border: none;
+  background: #4545ff;
+
+  color: #ffffff;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+  font-size: 14px;
+
+  padding: 12px;
+
+  transition: all 200ms ease-in-out;
+}
+
+button:hover {
+  background: #3434d4;
+  cursor: pointer;
+}
+
+button:active, button:focus {
+  background: #2727ac;
+  outline: none;
+}
+
+button:disabled{
+  background: #838396;
+  cursor: default;
+}

@@ -38,12 +38,19 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.registerIPC = void 0;
 var electron_1 = require("electron");
+var operators_1 = require("rxjs/operators");
 var main_1 = require("./main");
+var trackingSub = undefined;
 function registerIPC() {
     var _this = this;
+    electron_1.ipcMain.on('startApplication', function (event, data) {
+        main_1.FSUIPCApi.connectionObs.pipe(operators_1.debounceTime(100)).subscribe(function (isConnected) {
+            event.reply('fsuipcStatus', isConnected);
+        });
+    });
     // Start flight event
-    electron_1.ipcMain.on('startFlight', function (event, data) { return __awaiter(_this, void 0, void 0, function () {
-        var info, error_1;
+    electron_1.ipcMain.on('startFlight', function (event, icao) { return __awaiter(_this, void 0, void 0, function () {
+        var data, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
@@ -51,26 +58,50 @@ function registerIPC() {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFlight(data)];
+                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFlight(icao)];
                 case 2:
-                    info = _a.sent();
-                    event.reply('startFlight', info);
+                    data = _a.sent();
+                    event.reply('startFlight', { canStart: true, data: data });
                     return [3 /*break*/, 4];
                 case 3:
                     error_1 = _a.sent();
-                    event.reply('startFlight', error_1);
+                    event.reply('startFlight', { canStart: true, data: error_1 });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
         });
     }); });
+    electron_1.ipcMain.on('startFreeFlight', function (event, _data) { return __awaiter(_this, void 0, void 0, function () {
+        var data, error_2;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    _a.trys.push([0, 2, , 3]);
+                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFreeFlight()];
+                case 1:
+                    data = _a.sent();
+                    event.reply('startFreeFlight', { canStart: true, data: data });
+                    return [3 /*break*/, 3];
+                case 2:
+                    error_2 = _a.sent();
+                    event.reply('startFreeFlight', { canStart: false, data: error_2 });
+                    return [3 /*break*/, 3];
+                case 3: return [2 /*return*/];
+            }
+        });
+    }); });
     electron_1.ipcMain.on('startTracking', function (event) {
         console.log('Starting flight tracking');
-        var obs = main_1.FSUIPCApi.flightTrackingObs.subscribe(function (data) {
-            console.log(data);
+        trackingSub = main_1.FSUIPCApi.flightTrackingObs.subscribe(function (data) {
             event.reply('trackingData', data);
         });
         event.reply('startTracking', true);
+    });
+    electron_1.ipcMain.on('stopTracking', function (event) {
+        if (trackingSub) {
+            trackingSub.unsubscribe();
+        }
+        event.reply('stopTracking', true);
     });
 }
 exports.registerIPC = registerIPC;

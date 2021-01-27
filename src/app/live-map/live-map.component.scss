@@ -1,0 +1,26 @@
+::ng-deep .flight-number{
+  position: absolute;
+  background: none;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 500;
+  color: #d4641c;
+  box-shadow: none;
+  padding: 0px;
+  border: none;
+  white-space: nowrap;
+}
+
+::ng-deep .leaflet-tooltip-right {
+  margin-left: 0px;
+}
+
+::ng-deep .leaflet-tooltip-right:before{
+  display: none;
+}
+
+
+:host, .map{
+  width: 100%;
+  height: 100%;
+  display: block;
+}

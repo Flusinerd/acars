@@ -2,11 +2,23 @@
   
   <h2>Musketeer ACARS</h2>
 
+  <div class="status">
+    <img src="assets/icons/connected.svg" alt="FSUIPC Connected" *ngIf="connectionStatus">
+    <img src="assets/icons/not_connected.svg" alt="FSUIPC Disconnected" *ngIf="!connectionStatus">
+    <div class="tool-tip">
+      <span *ngIf="connectionStatus">FSUIPC connected</span>
+      <span *ngIf="!connectionStatus">FSUIPC not connected</span>
+    </div>
+  </div>
+
   <a routerLink="home">Pilot Center</a>
   <a routerLink="bookings">Bookings</a>
-  <a routerLink="freeflight">Free flight</a>
+  <a routerLink="freeflight">Free Flight</a>
   <a routerLink="weather">Weather</a>
   <a routerLink="log-book">Log-Book</a>
+  <a routerLink="live-map">Live-Map</a>
+  <a (click)="onTracking()">Start Tracking</a>
+
 
 </div>
 

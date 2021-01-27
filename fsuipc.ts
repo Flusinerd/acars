@@ -1,6 +1,6 @@
 import { FsuipcApi } from '@fsuipc/api';
-import { Observable } from 'rxjs';
-import { first, take } from 'rxjs/operators';
+import { BehaviorSubject, Observable } from 'rxjs';
+import { first } from 'rxjs/operators';
 import * as config from './config.json';
 import * as airports from './airports.json'
 
@@ -9,30 +9,88 @@ export class FSUIPCInterface {
 
   private _api;
 
-  flightTrackingObs: Observable<any>;
+  flightTrackingObs: Observable<ITrackingData>;
+  private _connectTimer;
 
+  connectionObs = new BehaviorSubject<boolean>(false);
 
   constructor() {
     this._api = new FsuipcApi();
+    this.connectToSim();
   }
 
   async connectToSim(): Promise<void> {
-    await this._api.init()
-    this.flightTrackingObs = this._api.listen(3000, fsuipcStrings)
-    console.log('Connected to sim');
-    return;
+    this._connectTimer = setInterval(async () => {
+      try {
+        await this._api.init();
+        this.connectionObs.next(true);
+        
+        this.flightTrackingObs = this._api.listen(3000, fsuipcStrings, true)
+        this._subscribeToTrackingObs();
+
+        console.log('Connected to sim');
+        clearInterval(this._connectTimer);
+      } catch (error) {
+        if (error.code === 2 && this.connectionObs.getValue() === true) {
+          this.connectionObs.next(false);
+          console.log('Not connected');
+        }
+      }
+    }, 2000);
   }
 
-  async canStartFlight(icao: string): Promise<boolean> {
+  private _subscribeToTrackingObs(): void {
+    this.flightTrackingObs.subscribe(() => {}, (error) => {
+      // Error code 12 on disconnect
+      console.error(error);
+      if (error.code === 12) {
+        // Disconected 
+        this.connectionObs.next(false);
+        this.connectToSim();
+      }
+    })
+  }
+
+  async canStartFreeFlight(): Promise<ITrackingData> {
     return new Promise(async (resolve, reject) => {
+      if (!this.connectionObs.getValue()) {
+        reject('No connection to Sim')
+        return;
+      }
 
-      await this.connectToSim();
-      console.log('Getting current info');
-      const currentInfo = this.flightTrackingObs.pipe(first()).subscribe((currentInfo) => {
-        console.log('CurrentInfo', currentInfo);
+      this.flightTrackingObs.pipe(first()).subscribe((currentInfo) => {
 
+        if (currentInfo.gs > config.allowedSpeed) {
+          reject('Too fast');
+          return;
+        }
+
+        if (currentInfo.engine1Firing || currentInfo.engine2Firing || currentInfo.engine3Firing || currentInfo.engine4Firing) {
+          console.error('Engine(s) running');
+          reject(false);
+          return;
+        }
+
+        resolve(currentInfo);
+      })
+    })
+  }
+
+  async canStartFlight(icao: string): Promise<ITrackingData> {
+    return new Promise(async (resolve, reject) => {
+      this.flightTrackingObs.pipe(first()).subscribe(async (currentInfo) => {
+
+        // Check if he can start free flight
+        try {
+          await this.canStartFreeFlight();
+        } catch (error) {
+          console.error(error);
+          reject(error);
+          return;
+        }
+
+        
         const airport = airports[icao];
-
         if (!airport) {
           console.error('Cannot find airport', icao);
           reject('Cannot find airport');
@@ -45,27 +103,13 @@ export class FSUIPCInterface {
           return;
         }
 
-        if (currentInfo.gs > config.allowedSpeed) {
-          console.error('To fast')
-          reject('Too fast');
-          return;
-        }
-
         // Check distance
         const distance = this._getDistanceFromLatLonInKm(airport.lat, airport.long, currentInfo.latitude, currentInfo.longitude);
         if (distance > config.allowedDistance) {
           reject('Too far');
           return;
         }
-
-        //Check engines running
-        if (currentInfo.engine1Firing || currentInfo.engine2Firing || currentInfo.engine3Firing || currentInfo.engine4Firing) {
-          console.error('Engine(s) running');
-          reject(false);
-          return;
-        }
-
-        resolve(true);
+        resolve(currentInfo);
       })
     })
 
@@ -111,4 +155,8 @@ export interface ITrackingData {
   longitude: number,
   latitude: number,
   heading: number,
+  engine1Firing: boolean,
+  engine2Firing: boolean,
+  engine3Firing: boolean,
+  engine4Firing: boolean,
 }
