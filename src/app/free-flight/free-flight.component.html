@@ -20,7 +20,7 @@
     <div class="input-group">
       <input type="text" name="flightNo" placeholder="&nbsp;" autocomplete="off" formControlName="flightNo">
       <label for="flightNo">Flight Number</label>
-      <span class="error-text" *ngIf="freeFlightForm.get('flightNo').hasError('callsign')">Must contain MQT</span>
+      <span class="error-text" *ngIf="freeFlightForm.get('flightNo').hasError('callsign')">Must contain MQT or MQC</span>
       <span class="error-text" *ngIf="freeFlightForm.get('flightNo').hasError('required')">Required</span>
     </div>
     <div class="input-group">
