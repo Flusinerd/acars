@@ -65,7 +65,7 @@ function registerIPC() {
                     return [3 /*break*/, 4];
                 case 3:
                     error_1 = _a.sent();
-                    event.reply('startFlight', { canStart: true, data: error_1 });
+                    event.reply('startFlight', { canStart: false, data: error_1 });
                     return [3 /*break*/, 4];
                 case 4: return [2 /*return*/];
             }
@@ -92,9 +92,11 @@ function registerIPC() {
     }); });
     electron_1.ipcMain.on('startTracking', function (event) {
         console.log('Starting flight tracking');
-        trackingSub = main_1.FSUIPCApi.flightTrackingObs.subscribe(function (data) {
-            event.reply('trackingData', data);
-        });
+        if (!trackingSub) {
+            trackingSub = main_1.FSUIPCApi.flightTrackingObs.subscribe(function (data) {
+                event.reply('trackingData', data);
+            });
+        }
         event.reply('startTracking', true);
     });
     electron_1.ipcMain.on('stopTracking', function (event) {

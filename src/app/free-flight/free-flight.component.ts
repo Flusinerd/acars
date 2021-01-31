@@ -5,6 +5,8 @@ import { flValidator } from '../shared/validators/flighLevel.validator';
 import { flightNoValidator } from '../shared/validators/flightNo.validator';
 import { IpcService, ITrackingData } from '../ipc.service';
 import { BehaviorSubject } from 'rxjs';
+import { Router } from '@angular/router';
+import { FlightProgressService } from '../flight-progress.service';
 
 @Component({
   selector: 'app-free-flight',
@@ -20,6 +22,8 @@ export class FreeFlightComponent implements OnInit {
   constructor(
     private _fb: FormBuilder,
     private _icp: IpcService,
+    private _router: Router,
+    private _progress: FlightProgressService,
   ) {
     this.freeFlightForm = this._fb.group({
       origin: ['', [Validators.required, icaoValidator()]],
@@ -41,10 +45,16 @@ export class FreeFlightComponent implements OnInit {
       const data = await this._icp.startFreeFlight();
       this.trackingData.next(data);
       await this._icp.startTracking();
-      this._icp.currentData.subscribe((data) => {
-        this.trackingData.next(data);
-        console.table(data);
-      })
+      console.log('Tracking started');
+    } catch (error) {
+      console.error(error);
+    }
+
+    // Tracking started, start flight reporting
+    try {
+      await this._progress.registerFlight('eddf', 'eddl', 'MQT1922', false);
+      console.log('Flight registered');
+      this._router.navigateByUrl('flight-progress')
     } catch (error) {
       console.error(error);
     }

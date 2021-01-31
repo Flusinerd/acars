@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { EventEmitter, Injectable } from '@angular/core';
 import { IpcRenderer } from 'electron';
 import { BehaviorSubject } from 'rxjs';
 
@@ -15,6 +15,9 @@ export class IpcService {
   public flightActive = new BehaviorSubject<boolean>(false);
 
   public fsuipcStatus = new BehaviorSubject<boolean>(false);
+  public flightStatus = new BehaviorSubject<flightStatus>(flightStatus.preDepature);
+
+  public endFlightEvent = new EventEmitter<IEndFlight>();
 
   constructor() {
     if (window.require) {
@@ -36,6 +39,7 @@ export class IpcService {
       this._ipc.once('startFlight', (event, data: IStartFlightResponse) => {
         if (data.canStart === true) {
           this.currentData.next(data.data);
+          console.log(data);
           resolve(data.data);
         } else {
           reject(data.data);
@@ -61,8 +65,8 @@ export class IpcService {
   startTracking() {
     return new Promise((resolve, reject) => {
       this._ipc.send('startTracking');
-      this._ipc.once('startTracking', (event, data: boolean) => {
-        this._subscribeToTrackingData();
+      this._ipc.once('startTracking', async(event, data: boolean) => {
+        await this._subscribeToTrackingData();
         this.flightActive.next(true);
         resolve(true);
       })
@@ -70,12 +74,17 @@ export class IpcService {
   }
 
   private _subscribeToTrackingData() {
-    if (!this._subscribedToTrackingData) {
-      this._ipc.on('trackingData', (event, data: ITrackingData) => {
-        this.currentData.next(data);
-      })
-      this._subscribedToTrackingData = true;
-    }
+    return new Promise<void>((resolve, reject) => {
+      if (!this._subscribedToTrackingData) {
+        this._ipc.on('trackingData', (event, data: ITrackingData) => {
+          this.currentData.next(data);
+          resolve();
+        })
+        this._subscribedToTrackingData = true;
+      } else {
+        resolve();
+      }
+    })
   }
 
   public endFlight(): Promise<void> {
@@ -96,7 +105,20 @@ export class IpcService {
     this._ipc.on('fsuipcStatus', (event, isConnected) => {
       this.fsuipcStatus.next(isConnected);
     })
+
+    this._ipc.on('flightStatus', (event, data:flightStatus) => {
+      this.flightStatus.next(data);
+    })
+
+    this._ipc.on('endFlight', (event, data: ITrackingData, start: Date, end: Date) => {
+      this.endFlightEvent.emit({
+        data,
+        start,
+        end
+      });
+    })
   }
+
   
 }
 
@@ -106,15 +128,32 @@ export interface IStartFlightResponse {
 }
 
 export interface ITrackingData {
-  gs: number,
-  ias: number,
-  vs: number,
-  altitude: number,
-  longitude: number,
-  latitude: number,
-  heading: number,
-  engine1Firing: boolean,
-  engine2Firing: boolean,
-  engine3Firing: boolean,
-  engine4Firing: boolean,
+  gs: number;
+  ias: number;
+  vs: number;
+  altitude: number;
+  longitude: number;
+  latitude: number;
+  heading: number;
+  engine1Firing: boolean;
+  engine2Firing: boolean;
+  engine3Firing: boolean;
+  engine4Firing: boolean;
+  atcTypeCode: string;
+}
+
+export interface IEndFlight{
+  data: ITrackingData;
+  start: Date;
+  end: Date;
+}
+
+export enum flightStatus {
+  preDepature,
+  depature,
+  enroute,
+  approach,
+  landing,
+  parked,
+  taxiToParking
 }

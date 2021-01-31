@@ -3,11 +3,17 @@
   <h2>Musketeer ACARS</h2>
 
   <div class="status">
-    <img src="assets/icons/connected.svg" alt="FSUIPC Connected" *ngIf="connectionStatus">
-    <img src="assets/icons/not_connected.svg" alt="FSUIPC Disconnected" *ngIf="!connectionStatus">
-    <div class="tool-tip">
-      <span *ngIf="connectionStatus">FSUIPC connected</span>
-      <span *ngIf="!connectionStatus">FSUIPC not connected</span>
+    <img src="assets/icons/connected.svg"  class="fsuipc" alt="FSUIPC Connected" *ngIf="fsuipcConnectionStatus">
+    <img src="assets/icons/not_connected.svg" class="fsuipc" alt="FSUIPC Disconnected" *ngIf="!fsuipcConnectionStatus">
+    <img src="assets/icons/http_connected.svg"  class="http" alt="Server Connected" *ngIf="httpConnectionStatus">
+    <img src="assets/icons/http_disconnected.svg" class="http" alt="Server Disconnected" *ngIf="!httpConnectionStatus">
+    <div class="tool-tip fsuipc">
+      <span *ngIf="fsuipcConnectionStatus">FSUIPC connected</span>
+      <span *ngIf="!fsuipcConnectionStatus">FSUIPC not connected</span>
+    </div>
+    <div class="tool-tip http">
+      <span *ngIf="httpConnectionStatus">Server connected</span>
+      <span *ngIf="!httpConnectionStatus">Server not connected</span>
     </div>
   </div>
 
@@ -17,11 +23,13 @@
   <a routerLink="weather">Weather</a>
   <a routerLink="log-book">Log-Book</a>
   <a routerLink="live-map">Live-Map</a>
+  <a routerLink="flight-progress">Active Flight</a>
   <a (click)="onTracking()">Start Tracking</a>
 
 
 </div>
 
 <div class="outlet">
+  <app-spinner *ngIf="isLoading" [@inOutAnimation]></app-spinner>
   <router-outlet></router-outlet>
 </div>

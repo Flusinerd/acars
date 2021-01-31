@@ -70,9 +70,18 @@ div.status {
 
   img {
     width: 30px;
+    margin-right: 5px;
   }
 
-  img:hover ~ div.tool-tip{
+  img:last-child {
+    margin-right: 0px;
+  }
+
+  img.http:hover ~ div.tool-tip.http{
+    display: block;
+  }
+
+  img.fsuipc:hover ~ div.tool-tip.fsuipc{
     display: block;
   }
 

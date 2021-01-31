@@ -7,6 +7,8 @@
 ul {
   padding-left: 0px;
   list-style: none;
+  max-height: 210px;
+  overflow-y: auto;
 }
 
 li {
@@ -23,4 +25,9 @@ li:first-child {
 li:last-child {
   border-radius: 0px 0px 10px 10px;
   border-bottom: 1px solid #515151;
+}
+
+li:hover {
+  background: rgba($color: #222222, $alpha: 0.6);
+  cursor: pointer;
 }

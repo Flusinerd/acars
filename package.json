@@ -1,11 +1,10 @@
 {
-  "name": "angular-electron",
+  "name": "musketeer-acars",
   "version": "9.0.3",
-  "description": "Angular 11 with Electron (Typescript + SASS + Hot Reload)",
-  "homepage": "https://github.com/maximegris/angular-electron",
+  "description": "ACARS Client for Musketeer VA",
   "author": {
-    "name": "Maxime GRIS",
-    "email": "maxime.gris@gmail.com"
+    "name": "Jan Krüger",
+    "email": "jan.krueger@datenlotse.org"
   },
   "keywords": [
     "angular",
@@ -41,13 +40,19 @@
     "lint": "ng lint"
   },
   "dependencies": {
+    "@angular/animations": "11.1.1",
     "@asymmetrik/ngx-leaflet": "8.1.0",
-    "@fsuipc/api": "0.4.0",
+    "@flusinerd/api-msfs": "0.5.0",
+    "@flusinerd/msfs-api": "0.5.1",
+    "@types/axios": "0.14.0",
     "@types/electron": "1.6.10",
     "@types/leaflet-rotatedmarker": "0.2.1",
+    "axios": "0.21.1",
     "fsuipc": "0.3.0",
     "leaflet": "1.7.1",
     "leaflet-rotatedmarker": "0.2.0",
+    "ngx-socket-io": "3.2.0",
+    "rxjs": "6.6.3",
     "vm2": "3.9.2"
   },
   "devDependencies": {
@@ -99,7 +104,6 @@
     "karma-jasmine-html-reporter": "1.5.4",
     "mocha": "8.2.1",
     "npm-run-all": "4.1.5",
-    "rxjs": "6.6.3",
     "spectron": "13.0.0",
     "ts-node": "9.1.0",
     "tslib": "2.0.3",

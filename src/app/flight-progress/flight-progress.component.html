@@ -1,0 +1,23 @@
+<div class="wrapper">
+  <h2>Active Flight</h2>
+  <ng-container *ngIf="!currentData">
+    <p>No connection to sim</p>
+  </ng-container>
+  <ng-container *ngIf="currentData">
+
+    <p><span class="w-400 light">Altitude: </span> {{currentData.altitude | number:'1.0-0' }} ft</p>
+    <p><span class="w-400 light">Vertical Speed: </span> {{currentData.vs | number:'1.0-0' }} ft/min</p>
+    <p><span class="w-400 light">Heading: </span> {{currentData.heading | number:'1.0-0' }}°</p>
+    <p><span class="w-400 light">Ground Speed: </span> {{currentData.gs | number:'1.0-0' }} knots</p>
+    <p><span class="w-400 light">Ias: </span> {{currentData.ias | number:'1.0-0' }} knots</p>
+    <p><span class="w-400 light">Distance to go: </span> {{distanceRemain | number:'1.1-1' }} NM</p>
+    <p><span class="w-400 light">Time to go: </span> {{hoursRemain | number:'1.0-0' }}:{{minutesRemain | number:'2.0-0'
+      }}
+      h</p>
+    <p><span class="w-400 light">Completed: </span> {{ percentageCompleted | percent }}</p>
+
+    <div class="meter red">
+      <span [style.width]="percentageCompletedRounded + '%'"></span>
+    </div>
+  </ng-container>
+</div>

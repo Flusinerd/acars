@@ -1,15 +1,15 @@
-<div class="p-16">
+<div class="p-16" *ngIf="pilot">
   <h2 class="greeting">
-    Welcome back, PILOT!
+    Welcome back, {{pilot.firstName}} {{pilot.name}}!
   </h2>
   
-  <h3><span class="w-400 light">Your current Location: </span>EDDF</h3>
+  <h3><span class="w-400 light">Your current Location: </span>{{pilot.currentLocation | uppercase}}</h3>
   <h3><span class="w-400 light">Your current rank: </span>CAPTAIN</h3>
   
-  <h4><span class="w-400 light">Total Hours: </span>200</h4>
-  <h4><span class="w-400 light">Total Flights: </span>39</h4>
-  <h4><span class="w-400 light">Total Pax carried: </span>3,521</h4>
-  <h4><span class="w-400 light">Total Distance Flown: </span>12,512 NM</h4>
+  <h4><span class="w-400 light">Total Hours: </span>{{pilot.flightHours | number:'1.0-0'}}</h4>
+  <h4><span class="w-400 light">Total Flights: </span>{{pilot.totalFlights | number:'1.0-0'}}</h4>
+  <h4><span class="w-400 light">Total Pax carried: </span>{{pilot.totalPax | number:'1.0-0'}}</h4>
+  <h4><span class="w-400 light">Total Distance Flown: </span>{{pilot.totalDistance | number:'1.0-0'}} NM</h4>
 </div>
 
 <div class="p-16">
@@ -22,5 +22,9 @@
     <li>Annoucement 5</li>
     <li>Annoucement 6</li>
     <li>Annoucement 7</li>
+    <li>Annoucement 8</li>
+    <li>Annoucement 9</li>
+    <li>Annoucement 10</li>
+    <li>Annoucement 11</li>
   </ul>
 </div>

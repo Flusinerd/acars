@@ -6,7 +6,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "angular-electron": {
+    "musketeer-acars": {
       "root": "",
       "sourceRoot": "src",
       "projectType": "application",
@@ -86,24 +86,24 @@
         "serve": {
           "builder": "@angular-builders/custom-webpack:dev-server",
           "options": {
-            "browserTarget": "angular-electron:build"
+            "browserTarget": "musketeer-acars:build"
           },
           "configurations": {
             "dev": {
-              "browserTarget": "angular-electron:build:dev"
+              "browserTarget": "musketeer-acars:build:dev"
             },
             "web": {
-              "browserTarget": "angular-electron:build:web"
+              "browserTarget": "musketeer-acars:build:web"
             },
             "production": {
-              "browserTarget": "angular-electron:build:production"
+              "browserTarget": "musketeer-acars:build:production"
             }
           }
         },
         "extract-i18n": {
           "builder": "@angular-devkit/build-angular:extract-i18n",
           "options": {
-            "browserTarget": "angular-electron:build"
+            "browserTarget": "musketeer-acars:build"
           }
         },
         "test": {
@@ -137,7 +137,7 @@
         }
       }
     },
-    "angular-electron-e2e": {
+    "musketeer-acars-e2e": {
       "root": "e2e",
       "projectType": "application",
       "architect": {
@@ -153,7 +153,7 @@
       }
     }
   },
-  "defaultProject": "angular-electron",
+  "defaultProject": "musketeer-acars",
   "schematics": {
     "@schematics/angular:component": {
       "prefix": "app",

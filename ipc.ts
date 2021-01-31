@@ -20,7 +20,7 @@ export function registerIPC() {
       const data = await FSUIPCApi.canStartFlight(icao);
       event.reply('startFlight', {canStart: true, data});
     } catch (error) {
-      event.reply('startFlight', {canStart: true, data: error});
+      event.reply('startFlight', {canStart: false, data: error});
     }
   })
 

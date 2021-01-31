@@ -1,5 +1,6 @@
 {
   "allowedDistance": 20,
   "allowedHeight": 100,
-  "allowedSpeed": 5
+  "allowedSpeed": 5,
+  "apiUrl": "http://localhost:3000"
 }

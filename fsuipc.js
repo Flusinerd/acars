@@ -36,17 +36,24 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.FSUIPCInterface = void 0;
-var api_1 = require("@fsuipc/api");
+exports.flightStatus = exports.FSUIPCInterface = void 0;
+var msfs_api_1 = require("@flusinerd/msfs-api");
 var rxjs_1 = require("rxjs");
 var operators_1 = require("rxjs/operators");
 var config = require("./config.json");
-var airports = require("./airports.json");
+var axios = require("axios");
+var electron_1 = require("electron");
 var FSUIPCInterface = /** @class */ (function () {
     function FSUIPCInterface() {
+        this.flightStatus = new rxjs_1.BehaviorSubject(flightStatus.preDepature);
+        this._lastVsReadings = [];
         this.connectionObs = new rxjs_1.BehaviorSubject(false);
-        this._api = new api_1.FsuipcApi();
+        this._api = new msfs_api_1.FsuipcApi();
+        console.log('Trying to connect....');
         this.connectToSim();
+        this.flightStatus.subscribe(function (status) {
+            electron_1.ipcMain.emit('flightStatus', status);
+        });
     }
     FSUIPCInterface.prototype.connectToSim = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -61,8 +68,11 @@ var FSUIPCInterface = /** @class */ (function () {
                                 return [4 /*yield*/, this._api.init()];
                             case 1:
                                 _a.sent();
+                                console.log('trying to connect to sim...');
                                 this.connectionObs.next(true);
+                                console.log('PRe');
                                 this.flightTrackingObs = this._api.listen(3000, fsuipcStrings, true);
+                                console.log('Obs set');
                                 this._subscribeToTrackingObs();
                                 console.log('Connected to sim');
                                 clearInterval(this._connectTimer);
@@ -84,9 +94,60 @@ var FSUIPCInterface = /** @class */ (function () {
     };
     FSUIPCInterface.prototype._subscribeToTrackingObs = function () {
         var _this = this;
-        this.flightTrackingObs.subscribe(function () { }, function (error) {
+        this.flightTrackingObs.subscribe(function (data) {
+            console.log(data);
+            var currentStatus = _this.flightStatus.getValue();
+            if (currentStatus === flightStatus.preDepature) {
+                if (data.engine1Firing) {
+                    _this.flightStatus.next(flightStatus.depature);
+                    _this._startDate = new Date();
+                    console.log('Flight now in depature');
+                }
+            }
+            else if (currentStatus === flightStatus.depature) {
+                if (_this._getDistanceFromLatLonInKm(_this._startLocationLat, _this._startLocationLong, data.latitude, data.longitude) > 10) {
+                    _this.flightStatus.next(flightStatus.enroute);
+                    console.log('Flight now enroute');
+                }
+            }
+            else if (currentStatus === flightStatus.enroute) {
+                _this._lastVsReadings.push(data.vs);
+                if (_this._lastVsReadings.length > 20) {
+                    _this._lastVsReadings.shift();
+                }
+                var sum = 0;
+                for (var _i = 0, _a = _this._lastVsReadings; _i < _a.length; _i++) {
+                    var vs = _a[_i];
+                    sum += vs;
+                }
+                var average = sum / _this._lastVsReadings.length;
+                if (average < -600) {
+                    _this.flightStatus.next(flightStatus.approach);
+                    console.log('Flight now in approach');
+                }
+            }
+            else if (currentStatus === flightStatus.approach) {
+                if ((data.altitude - data.nearestAirportAltitude) < 2000) {
+                    _this.flightStatus.next(flightStatus.landing);
+                    console.log('Flight now landing');
+                }
+            }
+            else if (currentStatus === flightStatus.landing) {
+                if (data.planeOnground) {
+                    _this.flightStatus.next(flightStatus.taxiToParking);
+                    console.log('Taxi to parking');
+                    console.log('Touchdown VS', data.vsAtTouchdown);
+                }
+            }
+            else if (currentStatus === flightStatus.taxiToParking) {
+                if (!data.engine1Firing) {
+                    _this.flightStatus.next(flightStatus.parked);
+                    console.log('Flight now parked');
+                    _this.onEndFlight(data);
+                }
+            }
+        }, function (error) {
             // Error code 12 on disconnect
-            console.error(error);
             if (error.code === 12) {
                 // Disconected 
                 _this.connectionObs.next(false);
@@ -99,17 +160,23 @@ var FSUIPCInterface = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) { return __awaiter(_this, void 0, void 0, function () {
+                        var _this = this;
                         return __generator(this, function (_a) {
                             if (!this.connectionObs.getValue()) {
+                                console.log('No connection to sim');
                                 reject('No connection to Sim');
                                 return [2 /*return*/];
                             }
+                            console.log("Obs", this.flightTrackingObs);
                             this.flightTrackingObs.pipe(operators_1.first()).subscribe(function (currentInfo) {
+                                console.log('Current info', currentInfo);
+                                _this._startLocationLat = currentInfo.latitude;
+                                _this._startLocationLong = currentInfo.longitude;
                                 if (currentInfo.gs > config.allowedSpeed) {
                                     reject('Too fast');
                                     return;
                                 }
-                                if (currentInfo.engine1Firing || currentInfo.engine2Firing || currentInfo.engine3Firing || currentInfo.engine4Firing) {
+                                if (currentInfo.engine1Firing) {
                                     console.error('Engine(s) running');
                                     reject(false);
                                     return;
@@ -130,7 +197,7 @@ var FSUIPCInterface = /** @class */ (function () {
                         var _this = this;
                         return __generator(this, function (_a) {
                             this.flightTrackingObs.pipe(operators_1.first()).subscribe(function (currentInfo) { return __awaiter(_this, void 0, void 0, function () {
-                                var error_2, airport, distance;
+                                var error_2, depatureAirport, distance;
                                 return __generator(this, function (_a) {
                                     switch (_a.label) {
                                         case 0:
@@ -144,19 +211,14 @@ var FSUIPCInterface = /** @class */ (function () {
                                             console.error(error_2);
                                             reject(error_2);
                                             return [2 /*return*/];
-                                        case 3:
-                                            airport = airports[icao];
-                                            if (!airport) {
-                                                console.error('Cannot find airport', icao);
-                                                reject('Cannot find airport');
+                                        case 3: return [4 /*yield*/, axios.default.get(config.apiUrl + "/airports/" + icao.toLowerCase())];
+                                        case 4:
+                                            depatureAirport = (_a.sent()).data;
+                                            if (!depatureAirport) {
+                                                reject('Depature Airport not found');
                                                 return [2 /*return*/];
                                             }
-                                            if (Math.abs(currentInfo.altitude - airport.elevation) > config.allowedHeight) {
-                                                console.error('To High');
-                                                reject('Too High');
-                                                return [2 /*return*/];
-                                            }
-                                            distance = this._getDistanceFromLatLonInKm(airport.lat, airport.long, currentInfo.latitude, currentInfo.longitude);
+                                            distance = this._getDistanceFromLatLonInKm(depatureAirport.lat, depatureAirport.long, currentInfo.latitude, currentInfo.longitude);
                                             if (distance > config.allowedDistance) {
                                                 reject('Too far');
                                                 return [2 /*return*/];
@@ -186,6 +248,10 @@ var FSUIPCInterface = /** @class */ (function () {
     FSUIPCInterface.prototype._deg2rad = function (deg) {
         return deg * (Math.PI / 180);
     };
+    FSUIPCInterface.prototype.onEndFlight = function (data) {
+        this._endDate = new Date();
+        electron_1.ipcMain.emit('endFlight', data, this._startDate, this._endDate);
+    };
     return FSUIPCInterface;
 }());
 exports.FSUIPCInterface = FSUIPCInterface;
@@ -198,8 +264,19 @@ var fsuipcStrings = [
     'vs',
     'heading',
     'engine1Firing',
-    'engine2Firing',
-    'engine3Firing',
-    'engine4Firing',
+    'nearestAirportAltitude',
+    'atcTypeCode',
+    'vsAtTouchdown',
+    'planeOnground'
 ];
+var flightStatus;
+(function (flightStatus) {
+    flightStatus[flightStatus["preDepature"] = 0] = "preDepature";
+    flightStatus[flightStatus["depature"] = 1] = "depature";
+    flightStatus[flightStatus["enroute"] = 2] = "enroute";
+    flightStatus[flightStatus["approach"] = 3] = "approach";
+    flightStatus[flightStatus["landing"] = 4] = "landing";
+    flightStatus[flightStatus["parked"] = 5] = "parked";
+    flightStatus[flightStatus["taxiToParking"] = 6] = "taxiToParking";
+})(flightStatus = exports.flightStatus || (exports.flightStatus = {}));
 //# sourceMappingURL=fsuipc.js.map

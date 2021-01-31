@@ -1,15 +1,18 @@
 import { ClassGetter } from '@angular/compiler/src/output/output_ast';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { icon, latLng, LatLngExpression, Marker, marker, Point, Polyline, polyline, tileLayer } from 'leaflet';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { CircleMarker, circleMarker, icon, latLng, LatLngExpression, Marker, marker, point, Point, Polyline, polyline, tileLayer } from 'leaflet';
 import 'leaflet-rotatedmarker';
+import { Subscription, timer } from 'rxjs';
+import { AirportsService, IAirport } from '../airports.service';
 import { IpcService } from '../ipc.service';
+import { Flight, TrackingService } from '../tracking.service';
 
 @Component({
   selector: 'app-live-map',
   templateUrl: './live-map.component.html',
   styleUrls: ['./live-map.component.scss']
 })
-export class LiveMapComponent implements OnInit {
+export class LiveMapComponent implements OnInit, OnDestroy {
 
   planeIcon = icon({
     iconUrl: 'assets/icons/plane.svg',
@@ -24,48 +27,97 @@ export class LiveMapComponent implements OnInit {
     center: latLng(51.28950119, 6.7667798999999995)
   };
 
+  flights: Flight[] = [];
+
   flightData: undefined | IFlightData = undefined;
+
+  private _airportsSub: Subscription | undefined = undefined;
 
   layers: any[] = [];
 
+  private _timerSub: Subscription | undefined;
+
   constructor(
     private _ipc: IpcService,
-    private _changeDetectorRef: ChangeDetectorRef
+    private _changeDetectorRef: ChangeDetectorRef,
+    private _airportService: AirportsService,
+    private _trackingService: TrackingService,
   ) { }
 
+  ngOnDestroy(): void {
+    this._timerSub?.unsubscribe();
+    this._airportsSub?.unsubscribe();
+  }
+
   ngOnInit(): void {
-    this._ipc.currentData.subscribe((data) => {
-      if (data) {
-        if (!this.flightData) {
-          this.flightData = {
-            flightNumber: 'MQT1922',
-            heading: data.heading,
-            positions: [{
-              lat: data.latitude,
-              long: data.longitude
-            }]
-          }
-          this._initFlight(this.flightData);
-        } else {
-          // Flight already exists, append position data and update heading
-          this.flightData.positions.push({
-            lat: data.latitude,
-            long: data.longitude,
-          })
-          this.flightData.heading = data.heading;
-          this._updateFlight(this.flightData);
-        }
+    this._timerSub = timer(0, 5000).subscribe(async () => {
+      const flights = await this._trackingService.getFlights().toPromise();
+      this._updateMap(flights);
+    })
+
+
+
+    this._airportsSub = this._airportService.airports.subscribe((airports) => {
+      if (airports.length < 6000) {
+        return;
       }
+      for (const airport of airports) {
+        this._drawAirport(airport);
+      }
+      this._changeDetectorRef.detectChanges();
     })
   }
 
-  private _initFlight(flightData: IFlightData) {
+  private _updateMap(flights: Flight[]) {
+    for (const flight of flights) {
+      let foundFlight = this._findFlight(flight.flightNumber);
+      if (foundFlight) {
+        // Flight found update data
+        const index = this.flights.findIndex((candidate) => candidate.flightNumber === foundFlight.flightNumber);
+        this.flights[index] = flight;
+        this._updateFlight(flight);
+      } else {
+        this._initFlight(flight);
+      }
+    }
+    this._changeDetectorRef.detectChanges();
+  }
+
+  private _findFlight(flightNo: string): Flight {
+    const res = this.flights.find((candidate) => candidate.flightNumber === flightNo);
+    return res;
+  }
+
+  private _drawAirport(airport: IAirport) {
+    const markerExists = this._getAirportMarker(airport);
+    let marker: CircleMarker;
+    if (!markerExists) {
+        marker = circleMarker([airport.lat, airport.long], {
+          color: '#d4641c',
+          radius: 2,
+        }).bindTooltip(airport.icao, {direction: 'right'});
+  
+      const options = marker.options as any;
+      options.icao = airport.icao;
+    } else {
+      marker = markerExists;
+      marker.setLatLng([airport.lat, airport.long]);
+    }
+
+    this.layers.push(marker);
+  }
+
+  private _getAirportMarker(airport: IAirport): CircleMarker | undefined {
+    return this.layers.find((marker) => marker.options.icao === airport.icao && marker instanceof CircleMarker);
+  }
+
+  private _initFlight(flightData: Flight) {
     if (this._checkIfFlightExists(flightData.flightNumber)) {
       return;
     }
 
     this.layers.push(this.createFlightMarker(flightData));
-    this._changeDetectorRef.detectChanges();
+    this.flights.push(flightData);
   }
 
   private _updateFlight(flightData: IFlightData) {
@@ -134,11 +186,12 @@ export class LiveMapComponent implements OnInit {
   }
 
   private createFlightPath(flightData: IFlightData) {
+    const data = this._findFlight(flightData.flightNumber);
     const line = polyline([
-      [flightData.positions[0].lat, flightData.positions[0].long]
+      [data.positions[0].lat, data.positions[0].long]
     ], { color: '#944615' })
-    for (let i = 1; i < flightData.positions.length; i++) {
-      line.addLatLng([flightData.positions[i].lat, flightData.positions[i].long]);
+    for (let i = 1; i < data.positions.length; i++) {
+      line.addLatLng([data.positions[i].lat, data.positions[i].long]);
     }
 
     const options = line.options as any;
