@@ -44,17 +44,20 @@ var config = require("./config.json");
 var axios = require("axios");
 var electron_1 = require("electron");
 var FSUIPCInterface = /** @class */ (function () {
-    function FSUIPCInterface() {
+    function FSUIPCInterface(win) {
+        this.win = win;
         this.flightStatus = new rxjs_1.BehaviorSubject(flightStatus.preDepature);
         this._lastVsReadings = [];
         this.connectionObs = new rxjs_1.BehaviorSubject(false);
+    }
+    FSUIPCInterface.prototype.init = function () {
         this._api = new msfs_api_1.FsuipcApi();
         console.log('Trying to connect....');
         this.connectToSim();
         this.flightStatus.subscribe(function (status) {
             electron_1.ipcMain.emit('flightStatus', status);
         });
-    }
+    };
     FSUIPCInterface.prototype.connectToSim = function () {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
@@ -95,7 +98,10 @@ var FSUIPCInterface = /** @class */ (function () {
     FSUIPCInterface.prototype._subscribeToTrackingObs = function () {
         var _this = this;
         this.flightTrackingObs.subscribe(function (data) {
-            console.log(data);
+            if (!data) {
+                return;
+            }
+            _this.onEndFlight(data);
             var currentStatus = _this.flightStatus.getValue();
             if (currentStatus === flightStatus.preDepature) {
                 if (data.engine1Firing) {
@@ -249,8 +255,10 @@ var FSUIPCInterface = /** @class */ (function () {
         return deg * (Math.PI / 180);
     };
     FSUIPCInterface.prototype.onEndFlight = function (data) {
+        console.log('Ending flight');
+        console.log('Win', this.win);
         this._endDate = new Date();
-        electron_1.ipcMain.emit('endFlight', data, this._startDate, this._endDate);
+        this.win.webContents.send('endFlight', data, this._startDate, this._endDate);
     };
     return FSUIPCInterface;
 }());

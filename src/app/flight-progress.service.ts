@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Subscription } from 'rxjs';
-import { IEndFlight, IpcService, ITrackingData, flightStatus } from './ipc.service'
+import { IEndFlight, IpcService } from './ipc.service'
 import { AirportsService } from './airports.service';
 import { first } from 'rxjs/operators';
 import { Socket } from 'ngx-socket-io';
@@ -8,6 +8,8 @@ import { IPlaneType, PlanesService } from './planes.service';
 import { PilotService } from './pilot.service';
 import { HttpClient } from '@angular/common/http';
 import { AppConfig } from '../environments/environment';
+import { ITrackingData } from '../../trackingData.interface';
+import { flightStatus } from '../../flightStatus';
 
 @Injectable({
   providedIn: 'root'
@@ -145,6 +147,7 @@ export class FlightProgressService {
       pilotId: this._pilotService.currentPilot.getValue().pilotId,
       planeTypeCode: (await this._planesService.getPlaneByAtcTypeCode(data.data.atcTypeCode).toPromise()).plane.typeCode || 'unk',
     }
+    console.log('Ending flight', body);
     await this._http.post(`${AppConfig.apiUrl}/finished-flights`, body).toPromise();
   }
 

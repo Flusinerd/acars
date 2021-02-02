@@ -1,9 +1,11 @@
 import { FsuipcApi } from '@flusinerd/msfs-api';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { first, takeUntil } from 'rxjs/operators';
+import { first } from 'rxjs/operators';
 import * as config from './config.json';
 import * as axios from 'axios'
-import { ipcMain } from "electron";
+import { ipcMain, BrowserWindow } from "electron";
+import { ITrackingData } from './trackingData.interface'
+import { flightStatus } from './flightStatus';
 
 
 
@@ -16,9 +18,6 @@ export class FSUIPCInterface {
   flightTrackingObs: Observable<ITrackingData>;
   private _connectTimer;
 
-  private _startLocationLat;
-  private _startLocationLong;
-
   private _lastVsReadings = [];
 
   private _startDate;
@@ -26,7 +25,10 @@ export class FSUIPCInterface {
 
   connectionObs = new BehaviorSubject<boolean>(false);
 
-  constructor() {
+  constructor(private win: BrowserWindow) {
+  }
+
+  init(): void {
     this._api = new FsuipcApi();
     console.log('Trying to connect....');
     this.connectToSim();
@@ -54,7 +56,7 @@ export class FSUIPCInterface {
         if (error.code === 2 && this.connectionObs.getValue() === true) {
           this.connectionObs.next(false);
           console.log('Not connected');
-        } 
+        }
       }
     }, 2000);
   }
@@ -62,53 +64,118 @@ export class FSUIPCInterface {
   private _subscribeToTrackingObs(): void {
     this.flightTrackingObs.subscribe((data) => {
 
-      console.log(data);
+      if (!data) {
+        return;
+      }
+
+      this.onEndFlight(data);
 
       const currentStatus = this.flightStatus.getValue();
-      if (currentStatus === flightStatus.preDepature) {
-        if (data.engine1Firing) {
-          this.flightStatus.next(flightStatus.depature);
-          this._startDate = new Date();
-          console.log('Flight now in depature')
-        }
-      } else if (currentStatus === flightStatus.depature) {
-        if (this._getDistanceFromLatLonInKm(this._startLocationLat, this._startLocationLong, data.latitude, data.longitude) > 10) {
-          this.flightStatus.next(flightStatus.enroute);
-          console.log('Flight now enroute')
-        }
-      } else if (currentStatus === flightStatus.enroute) {
-        this._lastVsReadings.push(data.vs)
-        if (this._lastVsReadings.length > 20) {
-          this._lastVsReadings.shift();
-        }
-        let sum = 0;
-        for (const vs of this._lastVsReadings) {
-          sum += vs;
-        }
-        const average = sum / this._lastVsReadings.length
-        if (average < -600) {
-          this.flightStatus.next(flightStatus.approach);
-          console.log('Flight now in approach')
-        }
-      }
-      else if (currentStatus === flightStatus.approach) {
-        if ((data.altitude - data.nearestAirportAltitude) < 2000) {
-          this.flightStatus.next(flightStatus.landing);
-          console.log('Flight now landing')
-        }
-      }
-      else if (currentStatus === flightStatus.landing) {
-        if (data.planeOnground) {
-          this.flightStatus.next(flightStatus.taxiToParking);
-          console.log('Taxi to parking')
-          console.log('Touchdown VS', data.vsAtTouchdown);
-        }
-      } else if( currentStatus === flightStatus.taxiToParking) {
-        if (!data.engine1Firing) {
+
+      // Switch for changing flightStatus based on current status
+      switch (currentStatus) {
+        case flightStatus.preDepature:
+          if (data.engine1Firing) {
+            this.flightStatus.next(flightStatus.taxiOut);
+            this._startDate = new Date();
+            console.log('Flight now in taxiOut')
+          }
+          break;
+
+        case flightStatus.taxiOut:
+          if (data.gs > 80) {
+            this.flightStatus.next(flightStatus.depature);
+            console.log('Flight now in depature')
+          }
+          break;
+
+        case flightStatus.depature:
+          if (data.radioAlt > 2000) {
+            this.flightStatus.next(flightStatus.climb);
+            console.log('Flight now in climb')
+          }
+          break;
+
+        case flightStatus.climb:
+          this._lastVsReadings.push(data.vs);
+          if (this._lastVsReadings.length > 20) {
+            this._lastVsReadings.shift();
+          }
+          let sum = 0;
+          for (const vs of this._lastVsReadings) {
+            sum += vs;
+          }
+          const average = sum / this._lastVsReadings.length
+          if (average < 600 && average > -600) {
+            this.flightStatus.next(flightStatus.levelFlight);
+            console.log('Flight now in level Flight')
+          }
+          break;
+
+        case flightStatus.levelFlight:
+          this._lastVsReadings.push(data.vs);
+          if (this._lastVsReadings.length > 20) {
+            this._lastVsReadings.shift();
+          }
+          let sum2 = 0;
+          for (const vs of this._lastVsReadings) {
+            sum2 += vs;
+          }
+          const average2 = sum2 / this._lastVsReadings.length
+          if (average2 < -1200) {
+            this.flightStatus.next(flightStatus.descent);
+            console.log('Flight now in descent')
+          }
+          break;
+
+        case flightStatus.descent:
+          if (data.altitude < 10000) {
+            this.flightStatus.next(flightStatus.approach);
+            console.log('Flight now in Approach')
+          }
+          break;
+
+        case flightStatus.approach:
+          if (data.radioAlt < 2500) {
+            this.flightStatus.next(flightStatus.landing);
+          }
+          break;
+
+        case flightStatus.landing:
+          if (data.planeOnground) {
+            this.flightStatus.next(flightStatus.taxiToParking);
+            console.log('Taxi to parking')
+            console.log('Touchdown VS', data.vsAtTouchdown);
+          }
+          if (data.vs > 1200) {
+            this.flightStatus.next(flightStatus.goAround);
+            console.log('Flight now in Go Around');
+          }
+          break;
+
+        case flightStatus.taxiToParking:
+          if (!data.engine1Firing) {
             this.flightStatus.next(flightStatus.parked);
             console.log('Flight now parked');
             this.onEndFlight(data);
           }
+          break;
+
+        case flightStatus.goAround:
+          this._lastVsReadings.push(data.vs);
+          if (this._lastVsReadings.length > 20) {
+            this._lastVsReadings.shift();
+          }
+          let sum3 = 0;
+          for (const vs of this._lastVsReadings) {
+            sum3 += vs;
+          }
+          const average3 = sum3 / this._lastVsReadings.length
+          if (average3 < -800 && data.radioAlt < 2500) {
+            this.flightStatus.next(flightStatus.landing);
+            console.log('Flight now in landing');
+          }
+          break;
       }
 
     }, (error) => {
@@ -135,9 +202,6 @@ export class FSUIPCInterface {
       this.flightTrackingObs.pipe(first()).subscribe((currentInfo) => {
 
         console.log('Current info', currentInfo);
-
-        this._startLocationLat = currentInfo.latitude;
-        this._startLocationLong = currentInfo.longitude;
 
         if (currentInfo.gs > config.allowedSpeed) {
           reject('Too fast');
@@ -205,9 +269,10 @@ export class FSUIPCInterface {
     return deg * (Math.PI / 180)
   }
 
-  onEndFlight(data: ITrackingData): void{
+  onEndFlight(data: ITrackingData): void {
+    console.log('Ending flight');
     this._endDate = new Date();
-    ipcMain.emit('endFlight', data, this._startDate, this._endDate);
+    this.win.webContents.send('endFlight', data, this._startDate, this._endDate);
   }
 }
 
@@ -223,35 +288,14 @@ const fsuipcStrings = [
   'nearestAirportAltitude',
   'atcTypeCode',
   'vsAtTouchdown',
-  'planeOnground'
+  'planeOnground',
+  'radioAlt',
+  'flapsControl',
+  'landingLights'
 ]
-export interface ITrackingData {
-  gs: number;
-  ias: number;
-  vs: number;
-  altitude: number;
-  longitude: number;
-  latitude: number;
-  heading: number;
-  engine1Firing: boolean;
-  nearestAirportAltitude: number;
-  atcTypeCode: string;
-  vsAtTouchdown: number;
-  planeOnground: boolean;
-}
 
 export interface IAirportData {
   icao: string;
   lat: string;
   long: string;
-}
-
-export enum flightStatus {
-  preDepature,
-  depature,
-  enroute,
-  approach,
-  landing,
-  parked,
-  taxiToParking
 }

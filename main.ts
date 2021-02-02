@@ -4,6 +4,8 @@ import * as url from 'url';
 import { FSUIPCInterface } from './fsuipc';
 import { registerIPC } from './ipc';
 
+export let FSUIPCApi = null;
+
 let win: BrowserWindow = null;
 const args = process.argv.slice(1),
   serve = args.some(val => val === '--serve');
@@ -44,7 +46,11 @@ function createWindow(): BrowserWindow {
     }));
   }
 
+  console.log('Win main', win);
+
   registerIPC();
+  FSUIPCApi = new FSUIPCInterface(win);
+  FSUIPCApi.init();
 
   // Emitted when the window is closed.
   win.on('closed', () => {
@@ -86,6 +92,3 @@ try {
   // throw e;
 }
 
-
-
-export const FSUIPCApi = new FSUIPCInterface();

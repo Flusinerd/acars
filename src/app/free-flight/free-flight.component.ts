@@ -51,8 +51,11 @@ export class FreeFlightComponent implements OnInit {
     }
 
     // Tracking started, start flight reporting
+    const origin = this.freeFlightForm.get('origin').value as string;
+    const destination = this.freeFlightForm.get('destination').value as string;
+    const callSign = this.freeFlightForm.get('flightNo').value as string;
     try {
-      await this._progress.registerFlight('eddf', 'eddl', 'MQT1922', false);
+      await this._progress.registerFlight(origin.toLowerCase(), destination.toLowerCase(), callSign, false);
       console.log('Flight registered');
       this._router.navigateByUrl('flight-progress')
     } catch (error) {

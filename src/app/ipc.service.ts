@@ -1,6 +1,8 @@
 import { EventEmitter, Injectable } from '@angular/core';
 import { IpcRenderer } from 'electron';
 import { BehaviorSubject } from 'rxjs';
+import { ITrackingData } from '../../trackingData.interface';
+import { flightStatus } from '../../flightStatus';
 
 
 @Injectable({
@@ -110,7 +112,9 @@ export class IpcService {
       this.flightStatus.next(data);
     })
 
+    console.log('Subed to endFlight Event');
     this._ipc.on('endFlight', (event, data: ITrackingData, start: Date, end: Date) => {
+      console.log('Fight End Triggered')
       this.endFlightEvent.emit({
         data,
         start,
@@ -127,33 +131,25 @@ export interface IStartFlightResponse {
   data: ITrackingData;
 }
 
-export interface ITrackingData {
-  gs: number;
-  ias: number;
-  vs: number;
-  altitude: number;
-  longitude: number;
-  latitude: number;
-  heading: number;
-  engine1Firing: boolean;
-  engine2Firing: boolean;
-  engine3Firing: boolean;
-  engine4Firing: boolean;
-  atcTypeCode: string;
-}
+// export interface ITrackingData {
+//   gs: number;
+//   ias: number;
+//   vs: number;
+//   altitude: number;
+//   longitude: number;
+//   latitude: number;
+//   heading: number;
+//   engine1Firing: boolean;
+//   nearestAirportAltitude: number;
+//   atcTypeCode: string;
+//   vsAtTouchdown: number;
+//   planeOnground: boolean;
+//   radioAlt: number;
+//   flapsControl: number;
+// }
 
 export interface IEndFlight{
   data: ITrackingData;
   start: Date;
   end: Date;
-}
-
-export enum flightStatus {
-  preDepature,
-  depature,
-  enroute,
-  approach,
-  landing,
-  parked,
-  taxiToParking
 }
