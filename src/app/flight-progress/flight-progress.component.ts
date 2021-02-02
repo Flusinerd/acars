@@ -1,7 +1,8 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { Subscription } from 'rxjs';
-import { IpcService, ITrackingData } from '../ipc.service';
+import { IpcService } from '../ipc.service';
 import { FlightProgressService } from '../flight-progress.service';
+import { ITrackingData } from '../../../trackingData.interface';
 
 @Component({
   selector: 'app-flight-progress',

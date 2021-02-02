@@ -53,7 +53,12 @@
     "leaflet-rotatedmarker": "0.2.0",
     "ngx-socket-io": "3.2.0",
     "rxjs": "6.6.3",
-    "vm2": "3.9.2"
+    "stream-browserify": "3.0.0",
+    "timers-browserify": "2.0.12",
+    "ts-md5": "1.2.7",
+    "update-electron-app": "2.0.1",
+    "vm2": "3.9.2",
+    "xml-js": "1.6.11"
   },
   "devDependencies": {
     "@angular-builders/custom-webpack": "10.0.1",

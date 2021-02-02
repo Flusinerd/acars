@@ -10,6 +10,7 @@ import { Router } from '@angular/router';
 import { SocketStatusService } from './socket-status.service';
 import { LoadingService } from './loading.service';
 import { inOutAnimation } from './animations/inOut';
+import { SimbriefService } from './simbrief/simbrief.service';
 
 @Component({
   selector: 'app-root',
@@ -37,6 +38,7 @@ export class AppComponent implements OnDestroy, AfterViewInit {
     private _router: Router,
     private _socketStatus: SocketStatusService,
     private _loadingService: LoadingService,
+    private _simBriefService: SimbriefService
   ) {
     this.translate.setDefaultLang('en');
     console.log('AppConfig', AppConfig);
@@ -99,5 +101,10 @@ export class AppComponent implements OnDestroy, AfterViewInit {
     this._fsuipcStatusSub?.unsubscribe();
     this._httpStatusSub?.unsubscribe();
     this._loadingStatusSub?.unsubscribe();
+  }
+
+  async testSimbrief(){
+    // this._simBriefService.simbriefsubmit('http://localhost:4200/callback', 'eddf', 'eddl', 'a320');
+    console.log("🚀 ~ file: app.component.ts ~ line 109 ~ AppComponent ~ testSimbrief ~ await this._simBriefService.mockresponse();", await this._simBriefService.mockresponse())
   }
 }

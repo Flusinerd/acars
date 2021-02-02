@@ -18,6 +18,7 @@ import { LiveMapModule } from './live-map/live-map.module';
 import { FreeFlightModule } from './free-flight/free-flight.module';
 import { BookingsModule } from './bookings/bookings.module';
 import { FlightProgressModule } from './flight-progress/flight-progress.module';
+import { SimbriefModule } from './simbrief/simbrief.module';
 
 import { AppComponent } from './app.component';
 import { LeafletModule } from '@asymmetrik/ngx-leaflet';
@@ -47,6 +48,7 @@ const config: SocketIoConfig = { url: AppConfig.apiUrl , options: {} };
     LiveMapModule,
     FlightProgressModule,
     BookingsModule,
+    SimbriefModule,
     AppRoutingModule,
     SocketIoModule.forRoot(config),
     TranslateModule.forRoot({
@@ -58,7 +60,9 @@ const config: SocketIoConfig = { url: AppConfig.apiUrl , options: {} };
     }),
     LeafletModule
   ],
-  providers: [],
+  providers: [
+    { provide: 'Window',  useValue: window }
+  ],
   bootstrap: [AppComponent]
 })
 export class AppModule {

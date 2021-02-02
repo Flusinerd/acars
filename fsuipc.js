@@ -36,17 +36,18 @@ var __generator = (this && this.__generator) || function (thisArg, body) {
     }
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.flightStatus = exports.FSUIPCInterface = void 0;
+exports.FSUIPCInterface = void 0;
 var msfs_api_1 = require("@flusinerd/msfs-api");
 var rxjs_1 = require("rxjs");
 var operators_1 = require("rxjs/operators");
 var config = require("./config.json");
 var axios = require("axios");
 var electron_1 = require("electron");
+var flightStatus_1 = require("./flightStatus");
 var FSUIPCInterface = /** @class */ (function () {
     function FSUIPCInterface(win) {
         this.win = win;
-        this.flightStatus = new rxjs_1.BehaviorSubject(flightStatus.preDepature);
+        this.flightStatus = new rxjs_1.BehaviorSubject(flightStatus_1.flightStatus.preDepature);
         this._lastVsReadings = [];
         this.connectionObs = new rxjs_1.BehaviorSubject(false);
     }
@@ -103,54 +104,104 @@ var FSUIPCInterface = /** @class */ (function () {
             }
             _this.onEndFlight(data);
             var currentStatus = _this.flightStatus.getValue();
-            if (currentStatus === flightStatus.preDepature) {
-                if (data.engine1Firing) {
-                    _this.flightStatus.next(flightStatus.depature);
-                    _this._startDate = new Date();
-                    console.log('Flight now in depature');
-                }
-            }
-            else if (currentStatus === flightStatus.depature) {
-                if (_this._getDistanceFromLatLonInKm(_this._startLocationLat, _this._startLocationLong, data.latitude, data.longitude) > 10) {
-                    _this.flightStatus.next(flightStatus.enroute);
-                    console.log('Flight now enroute');
-                }
-            }
-            else if (currentStatus === flightStatus.enroute) {
-                _this._lastVsReadings.push(data.vs);
-                if (_this._lastVsReadings.length > 20) {
-                    _this._lastVsReadings.shift();
-                }
-                var sum = 0;
-                for (var _i = 0, _a = _this._lastVsReadings; _i < _a.length; _i++) {
-                    var vs = _a[_i];
-                    sum += vs;
-                }
-                var average = sum / _this._lastVsReadings.length;
-                if (average < -600) {
-                    _this.flightStatus.next(flightStatus.approach);
-                    console.log('Flight now in approach');
-                }
-            }
-            else if (currentStatus === flightStatus.approach) {
-                if ((data.altitude - data.nearestAirportAltitude) < 2000) {
-                    _this.flightStatus.next(flightStatus.landing);
-                    console.log('Flight now landing');
-                }
-            }
-            else if (currentStatus === flightStatus.landing) {
-                if (data.planeOnground) {
-                    _this.flightStatus.next(flightStatus.taxiToParking);
-                    console.log('Taxi to parking');
-                    console.log('Touchdown VS', data.vsAtTouchdown);
-                }
-            }
-            else if (currentStatus === flightStatus.taxiToParking) {
-                if (!data.engine1Firing) {
-                    _this.flightStatus.next(flightStatus.parked);
-                    console.log('Flight now parked');
-                    _this.onEndFlight(data);
-                }
+            // Switch for changing flightStatus based on current status
+            switch (currentStatus) {
+                case flightStatus_1.flightStatus.preDepature:
+                    if (data.engine1Firing) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.taxiOut);
+                        _this._startDate = new Date();
+                        console.log('Flight now in taxiOut');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.taxiOut:
+                    if (data.gs > 80) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.depature);
+                        console.log('Flight now in depature');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.depature:
+                    if (data.radioAlt > 2000) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.climb);
+                        console.log('Flight now in climb');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.climb:
+                    _this._lastVsReadings.push(data.vs);
+                    if (_this._lastVsReadings.length > 20) {
+                        _this._lastVsReadings.shift();
+                    }
+                    var sum = 0;
+                    for (var _i = 0, _a = _this._lastVsReadings; _i < _a.length; _i++) {
+                        var vs = _a[_i];
+                        sum += vs;
+                    }
+                    var average = sum / _this._lastVsReadings.length;
+                    if (average < 600 && average > -600) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.levelFlight);
+                        console.log('Flight now in level Flight');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.levelFlight:
+                    _this._lastVsReadings.push(data.vs);
+                    if (_this._lastVsReadings.length > 20) {
+                        _this._lastVsReadings.shift();
+                    }
+                    var sum2 = 0;
+                    for (var _b = 0, _c = _this._lastVsReadings; _b < _c.length; _b++) {
+                        var vs = _c[_b];
+                        sum2 += vs;
+                    }
+                    var average2 = sum2 / _this._lastVsReadings.length;
+                    if (average2 < -1200) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.descent);
+                        console.log('Flight now in descent');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.descent:
+                    if (data.altitude < 10000) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.approach);
+                        console.log('Flight now in Approach');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.approach:
+                    if (data.radioAlt < 2500) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.landing);
+                    }
+                    break;
+                case flightStatus_1.flightStatus.landing:
+                    if (data.planeOnground) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.taxiToParking);
+                        console.log('Taxi to parking');
+                        console.log('Touchdown VS', data.vsAtTouchdown);
+                    }
+                    if (data.vs > 1200) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.goAround);
+                        console.log('Flight now in Go Around');
+                    }
+                    break;
+                case flightStatus_1.flightStatus.taxiToParking:
+                    if (!data.engine1Firing) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.parked);
+                        console.log('Flight now parked');
+                        _this.onEndFlight(data);
+                    }
+                    break;
+                case flightStatus_1.flightStatus.goAround:
+                    _this._lastVsReadings.push(data.vs);
+                    if (_this._lastVsReadings.length > 20) {
+                        _this._lastVsReadings.shift();
+                    }
+                    var sum3 = 0;
+                    for (var _d = 0, _e = _this._lastVsReadings; _d < _e.length; _d++) {
+                        var vs = _e[_d];
+                        sum3 += vs;
+                    }
+                    var average3 = sum3 / _this._lastVsReadings.length;
+                    if (average3 < -800 && data.radioAlt < 2500) {
+                        _this.flightStatus.next(flightStatus_1.flightStatus.landing);
+                        console.log('Flight now in landing');
+                    }
+                    break;
             }
         }, function (error) {
             // Error code 12 on disconnect
@@ -166,7 +217,6 @@ var FSUIPCInterface = /** @class */ (function () {
             var _this = this;
             return __generator(this, function (_a) {
                 return [2 /*return*/, new Promise(function (resolve, reject) { return __awaiter(_this, void 0, void 0, function () {
-                        var _this = this;
                         return __generator(this, function (_a) {
                             if (!this.connectionObs.getValue()) {
                                 console.log('No connection to sim');
@@ -176,8 +226,6 @@ var FSUIPCInterface = /** @class */ (function () {
                             console.log("Obs", this.flightTrackingObs);
                             this.flightTrackingObs.pipe(operators_1.first()).subscribe(function (currentInfo) {
                                 console.log('Current info', currentInfo);
-                                _this._startLocationLat = currentInfo.latitude;
-                                _this._startLocationLong = currentInfo.longitude;
                                 if (currentInfo.gs > config.allowedSpeed) {
                                     reject('Too fast');
                                     return;
@@ -256,7 +304,6 @@ var FSUIPCInterface = /** @class */ (function () {
     };
     FSUIPCInterface.prototype.onEndFlight = function (data) {
         console.log('Ending flight');
-        console.log('Win', this.win);
         this._endDate = new Date();
         this.win.webContents.send('endFlight', data, this._startDate, this._endDate);
     };
@@ -275,16 +322,9 @@ var fsuipcStrings = [
     'nearestAirportAltitude',
     'atcTypeCode',
     'vsAtTouchdown',
-    'planeOnground'
+    'planeOnground',
+    'radioAlt',
+    'flapsControl',
+    'landingLights'
 ];
-var flightStatus;
-(function (flightStatus) {
-    flightStatus[flightStatus["preDepature"] = 0] = "preDepature";
-    flightStatus[flightStatus["depature"] = 1] = "depature";
-    flightStatus[flightStatus["enroute"] = 2] = "enroute";
-    flightStatus[flightStatus["approach"] = 3] = "approach";
-    flightStatus[flightStatus["landing"] = 4] = "landing";
-    flightStatus[flightStatus["parked"] = 5] = "parked";
-    flightStatus[flightStatus["taxiToParking"] = 6] = "taxiToParking";
-})(flightStatus = exports.flightStatus || (exports.flightStatus = {}));
 //# sourceMappingURL=fsuipc.js.map
