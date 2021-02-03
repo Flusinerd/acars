@@ -4,7 +4,7 @@ import * as url from 'url';
 import { FSUIPCInterface } from './fsuipc';
 import { registerIPC } from './ipc';
 
-export let FSUIPCApi = null;
+export let FSUIPCApi: FSUIPCInterface = null;
 
 let win: BrowserWindow = null;
 const args = process.argv.slice(1),

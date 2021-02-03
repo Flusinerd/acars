@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { FormBuilder, FormGroup, Validators} from '@angular/forms';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { icaoValidator } from '../shared/validators/icao.validator';
 import { flValidator } from '../shared/validators/flighLevel.validator';
 import { flightNoValidator } from '../shared/validators/flightNo.validator';
@@ -40,31 +40,31 @@ export class FreeFlightComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.freeFlightForm.valueChanges.subscribe((val) => {})
+    this.freeFlightForm.valueChanges.subscribe((val) => { })
   }
 
   async onStartFlight(): Promise<void> {
     console.log(await this._simBriefService.mockresponse());
-    // try {
-    //   const data = await this._icp.startFreeFlight();
-    //   this.trackingData.next(data);
-    //   await this._icp.startTracking();
-    //   console.log('Tracking started');
-    // } catch (error) {
-    //   console.error(error);
-    // }
+    try {
+      const data = await this._icp.startFreeFlight('A320', 'MQT1922', 'EDDF', 'EDDL');
+      this.trackingData.next(data);
+      await this._icp.startTracking();
+      console.log('Tracking started');
+    } catch (error) {
+      console.error(error);
+    }
 
-    // // Tracking started, start flight reporting
-    // const origin = this.freeFlightForm.get('origin').value as string;
-    // const destination = this.freeFlightForm.get('destination').value as string;
-    // const callSign = this.freeFlightForm.get('flightNo').value as string;
-    // try {
-    //   await this._progress.registerFlight(origin.toLowerCase(), destination.toLowerCase(), callSign, false);
-    //   console.log('Flight registered');
-    //   this._router.navigateByUrl('flight-progress')
-    // } catch (error) {
-    //   console.error(error);
-    // }
+    // Tracking started, start flight reporting
+    const origin = this.freeFlightForm.get('origin').value as string;
+    const destination = this.freeFlightForm.get('destination').value as string;
+    const callSign = this.freeFlightForm.get('flightNo').value as string;
+    try {
+      await this._progress.registerFlight(origin.toLowerCase(), destination.toLowerCase(), callSign, false);
+      console.log('Flight registered');
+      this._router.navigateByUrl('flight-progress')
+    } catch (error) {
+      console.error(error);
+    }
   }
 
 }

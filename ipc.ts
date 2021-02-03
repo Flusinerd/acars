@@ -14,19 +14,19 @@ export function registerIPC() {
   })
 
   // Start flight event
-  ipcMain.on('startFlight', async (event, icao: string) => {
+  ipcMain.on('startFlight', async (event, type: string, flight: string, origin: string, destination: string) => {
     console.log('starFlight Event triggered');
     try {
-      const data = await FSUIPCApi.canStartFlight(icao);
+      const data = await FSUIPCApi.canStartFlight(type, flight, origin, destination);
       event.reply('startFlight', {canStart: true, data});
     } catch (error) {
       event.reply('startFlight', {canStart: false, data: error});
     }
   })
 
-  ipcMain.on('startFreeFlight', async (event, _data) => {
+  ipcMain.on('startFreeFlight', async (event, type: string, flight: string, origin: string, destination: string) => {
     try {
-      const data = await FSUIPCApi.canStartFreeFlight();
+      const data = await FSUIPCApi.canStartFreeFlight(type, flight, origin, destination);
       event.reply('startFreeFlight', {canStart: true, data});
     } catch(error) {
       event.reply('startFreeFlight', {canStart: false, data: error});

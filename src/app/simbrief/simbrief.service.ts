@@ -187,6 +187,10 @@ export class SimbriefService {
     return this._parseXml((await this._http.get(`${AppConfig.apiUrl}/pilots/test`, {responseType: 'text'}).toPromise()));
   }
 
+  public getPdf(url: string): Promise<any> {
+    return this._http.get(`${AppConfig.apiUrl}/simbrief/pdf?url=${url}`, { responseType: 'arraybuffer' }).toPromise();
+  }
+
 }
 
 

@@ -25,19 +25,18 @@ export class IpcService {
     if (window.require) {
       try {
         this._ipc = window.require('electron').ipcRenderer;
+        this._startApplication();
       } catch (e) {
         throw e;
       }
     } else {
       console.warn('Electron\'s IPC was not loaded');
     }
-
-    this._startApplication();
   }
 
-  startFlight(icao: string) {
+  startFlight(type: string, flight: string, origin: string, destination: string) {
     return new Promise((resolve, reject) => {
-      this._ipc.send('startFlight', icao);
+      this._ipc.send('startFlight', type, flight, origin, destination);
       this._ipc.once('startFlight', (event, data: IStartFlightResponse) => {
         if (data.canStart === true) {
           this.currentData.next(data.data);
@@ -50,9 +49,9 @@ export class IpcService {
     })
   }
 
-  startFreeFlight() {
+  startFreeFlight(type: string, flight: string, origin: string, destination: string) {
     return new Promise<ITrackingData>((resolve, reject) => {
-      this._ipc.send('startFreeFlight');
+      this._ipc.send('startFreeFlight', type, flight, origin, destination);
       this._ipc.once('startFreeFlight', (event, data: IStartFlightResponse) => {
         if (data.canStart === true) {
           this.currentData.next(data.data);
@@ -67,7 +66,7 @@ export class IpcService {
   startTracking() {
     return new Promise((resolve, reject) => {
       this._ipc.send('startTracking');
-      this._ipc.once('startTracking', async(event, data: boolean) => {
+      this._ipc.once('startTracking', async (event, data: boolean) => {
         await this._subscribeToTrackingData();
         this.flightActive.next(true);
         resolve(true);
@@ -108,7 +107,7 @@ export class IpcService {
       this.fsuipcStatus.next(isConnected);
     })
 
-    this._ipc.on('flightStatus', (event, data:flightStatus) => {
+    this._ipc.on('flightStatus', (event, data: flightStatus) => {
       this.flightStatus.next(data);
     })
 
@@ -123,7 +122,7 @@ export class IpcService {
     })
   }
 
-  
+
 }
 
 export interface IStartFlightResponse {
@@ -148,7 +147,7 @@ export interface IStartFlightResponse {
 //   flapsControl: number;
 // }
 
-export interface IEndFlight{
+export interface IEndFlight {
   data: ITrackingData;
   start: Date;
   end: Date;

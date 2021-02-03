@@ -1,17 +1,19 @@
 import { FsuipcApi } from '@flusinerd/msfs-api';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { first } from 'rxjs/operators';
+import { first, takeUntil, takeWhile } from 'rxjs/operators';
 import * as config from './config.json';
 import * as axios from 'axios'
 import { ipcMain, BrowserWindow } from "electron";
 import { ITrackingData } from './trackingData.interface'
 import { flightStatus } from './flightStatus';
-
+import * as fs from 'fs';
+import { join } from 'path';
+const lineByLine = require('n-readlines');
 
 
 export class FSUIPCInterface {
 
-  private _api;
+  private _api: FsuipcApi;
 
   flightStatus = new BehaviorSubject<flightStatus>(flightStatus.preDepature);
 
@@ -20,8 +22,18 @@ export class FSUIPCInterface {
 
   private _lastVsReadings = [];
 
-  private _startDate;
-  private _endDate;
+  private _startDate: Date;
+  private _endDate: Date;
+
+  private fileHandle: fs.WriteStream;
+
+  private type: string;
+  private flightNumber: string;
+  private origin: string;
+  private destination: string;
+  private loggingFilePath = join(__dirname, 'flight.acars');
+  private didCrash = false;
+  private recoveryInterval;
 
   connectionObs = new BehaviorSubject<boolean>(false);
 
@@ -34,25 +46,32 @@ export class FSUIPCInterface {
     this.connectToSim();
 
     this.flightStatus.subscribe((status) => {
-      ipcMain.emit('flightStatus', status);
+      this.win.webContents.send('flightStatus', status);
     })
+
+    console.log('Loggin Path', this.loggingFilePath);
   }
 
   async connectToSim(): Promise<void> {
     this._connectTimer = setInterval(async () => {
       try {
         await this._api.init();
-        console.log('trying to connect to sim...');
         this.connectionObs.next(true);
 
-        console.log('PRe')
         this.flightTrackingObs = this._api.listen(3000, fsuipcStrings, true)
-        console.log('Obs set')
-        this._subscribeToTrackingObs();
+        console.log('Flight Tracking Obs set')
+        const isCrashed = await this.checkForCrash();
+        console.log("🚀 ~ file: fsuipc.ts ~ line 62 ~ FSUIPCInterface ~ this._connectTimer=setInterval ~ isCrashed", isCrashed)
+        
+        if (isCrashed) {
+          // Do stuff to handle crash
+          this.handleCrash();
+        }
 
         console.log('Connected to sim');
         clearInterval(this._connectTimer);
       } catch (error) {
+        console.log('Connection error', error);
         if (error.code === 2 && this.connectionObs.getValue() === true) {
           this.connectionObs.next(false);
           console.log('Not connected');
@@ -62,29 +81,61 @@ export class FSUIPCInterface {
   }
 
   private _subscribeToTrackingObs(): void {
-    this.flightTrackingObs.subscribe((data) => {
+    console.log('Subsribing to tracking');
+    this.flightTrackingObs.subscribe(async (data) => {
 
       if (!data) {
         return;
       }
 
-      this.onEndFlight(data);
-
       const currentStatus = this.flightStatus.getValue();
+
+      // Enable to log positions as well
+      // if (currentStatus !== flightStatus.preDepature && currentStatus !== flightStatus.parked) {
+      //   this.fileHandle.write(this._positionToString(data) + '\n');
+      // }
+
+      if (this.didCrash && !this.fileHandle) {
+        this.fileHandle = fs.createWriteStream(this.loggingFilePath, {
+          flags: 'a'
+        });
+      }
 
       // Switch for changing flightStatus based on current status
       switch (currentStatus) {
         case flightStatus.preDepature:
           if (data.engine1Firing) {
             this.flightStatus.next(flightStatus.taxiOut);
-            this._startDate = new Date();
             console.log('Flight now in taxiOut')
+            this._startDate = new Date();
+
+
+            // Check if file already exists
+            try {
+              const fileExists = await fs.promises.access(this.loggingFilePath, fs.constants.F_OK);
+              await fs.promises.unlink(this.loggingFilePath);
+            } catch (error) {
+            }
+
+            // File is deleted, create a new one
+            if (!this.didCrash) {
+              this.fileHandle = fs.createWriteStream(this.loggingFilePath);
+            }
+
+            this.fileHandle.write(this.type + '\n');
+            this.fileHandle.write(this.flightNumber + '\n');
+            this.fileHandle.write(this._startDate.valueOf() + '\n');
+            this.fileHandle.write(this.origin + '\n');
+            this.fileHandle.write(this.destination + '\n');
+            this.fileHandle.write(this._statusToString(flightStatus.taxiOut) + '\n');
+            // this.fileHandle.write(this._positionToString(data) + '\n');
           }
           break;
 
         case flightStatus.taxiOut:
           if (data.gs > 80) {
             this.flightStatus.next(flightStatus.depature);
+            this.fileHandle.write(this._statusToString(flightStatus.depature) + '\n');
             console.log('Flight now in depature')
           }
           break;
@@ -92,6 +143,7 @@ export class FSUIPCInterface {
         case flightStatus.depature:
           if (data.radioAlt > 2000) {
             this.flightStatus.next(flightStatus.climb);
+            this.fileHandle.write(this._statusToString(flightStatus.climb) + '\n');
             console.log('Flight now in climb')
           }
           break;
@@ -108,6 +160,7 @@ export class FSUIPCInterface {
           const average = sum / this._lastVsReadings.length
           if (average < 600 && average > -600) {
             this.flightStatus.next(flightStatus.levelFlight);
+            this.fileHandle.write(this._statusToString(flightStatus.levelFlight) + '\n');
             console.log('Flight now in level Flight')
           }
           break;
@@ -122,15 +175,37 @@ export class FSUIPCInterface {
             sum2 += vs;
           }
           const average2 = sum2 / this._lastVsReadings.length
-          if (average2 < -1200) {
+          if (average2 < -500) {
             this.flightStatus.next(flightStatus.descent);
+            this.fileHandle.write(this._statusToString(flightStatus.descent) + '\n');
+            console.log('Flight now in descent')
+          }
+          if (average2 > 500) {
+            this.flightStatus.next(flightStatus.climb);
+            this.fileHandle.write(this._statusToString(flightStatus.climb) + '\n');
             console.log('Flight now in descent')
           }
           break;
 
         case flightStatus.descent:
+          this._lastVsReadings.push(data.vs);
+          if (this._lastVsReadings.length > 20) {
+            this._lastVsReadings.shift();
+          }
+          let sum4 = 0;
+          for (const vs of this._lastVsReadings) {
+            sum4 += vs;
+          }
+          const average4 = sum4 / this._lastVsReadings.length
+          if (average4 > -200 && average4 < 200) {
+            this.flightStatus.next(flightStatus.levelFlight);
+            this.fileHandle.write(this._statusToString(flightStatus.levelFlight) + '\n');
+            console.log('Flight now in levelFlight')
+          }
+
           if (data.altitude < 10000) {
             this.flightStatus.next(flightStatus.approach);
+            this.fileHandle.write(this._statusToString(flightStatus.approach) + '\n');
             console.log('Flight now in Approach')
           }
           break;
@@ -138,17 +213,20 @@ export class FSUIPCInterface {
         case flightStatus.approach:
           if (data.radioAlt < 2500) {
             this.flightStatus.next(flightStatus.landing);
+            this.fileHandle.write(this._statusToString(flightStatus.landing) + '\n');
           }
           break;
 
         case flightStatus.landing:
           if (data.planeOnground) {
             this.flightStatus.next(flightStatus.taxiToParking);
+            this.fileHandle.write(this._statusToString(flightStatus.taxiToParking) + '\n');
             console.log('Taxi to parking')
             console.log('Touchdown VS', data.vsAtTouchdown);
           }
           if (data.vs > 1200) {
             this.flightStatus.next(flightStatus.goAround);
+            this.fileHandle.write(this._statusToString(flightStatus.goAround) + '\n');
             console.log('Flight now in Go Around');
           }
           break;
@@ -156,6 +234,7 @@ export class FSUIPCInterface {
         case flightStatus.taxiToParking:
           if (!data.engine1Firing) {
             this.flightStatus.next(flightStatus.parked);
+            this.fileHandle.write(this._statusToString(flightStatus.parked) + '\n');
             console.log('Flight now parked');
             this.onEndFlight(data);
           }
@@ -173,6 +252,7 @@ export class FSUIPCInterface {
           const average3 = sum3 / this._lastVsReadings.length
           if (average3 < -800 && data.radioAlt < 2500) {
             this.flightStatus.next(flightStatus.landing);
+            this.fileHandle.write(this._statusToString(flightStatus.landing) + '\n');
             console.log('Flight now in landing');
           }
           break;
@@ -189,7 +269,7 @@ export class FSUIPCInterface {
   }
 
 
-  async canStartFreeFlight(): Promise<ITrackingData> {
+  async canStartFreeFlight(type: string, flightNo: string, origin: string, destination: string): Promise<ITrackingData> {
     return new Promise(async (resolve, reject) => {
       if (!this.connectionObs.getValue()) {
         console.log('No connection to sim');
@@ -197,7 +277,13 @@ export class FSUIPCInterface {
         return;
       }
 
-      console.log("Obs", this.flightTrackingObs);
+      this.type = type;
+      this.flightNumber = flightNo;
+      this.origin = origin;
+      this.destination = destination;
+
+      
+      this._subscribeToTrackingObs();
 
       this.flightTrackingObs.pipe(first()).subscribe((currentInfo) => {
 
@@ -208,31 +294,31 @@ export class FSUIPCInterface {
           return;
         }
 
-        if (currentInfo.engine1Firing) {
-          console.error('Engine(s) running');
-          reject(false);
-          return;
-        }
+        // if (currentInfo.engine1Firing) {
+        //   console.error('Engine(s) running');
+        //   reject(false);
+        //   return;
+        // }
 
         resolve(currentInfo);
       })
     })
   }
 
-  async canStartFlight(icao: string): Promise<ITrackingData> {
+  async canStartFlight(type: string, flightNo: string, origin: string, destination: string): Promise<ITrackingData> {
     return new Promise(async (resolve, reject) => {
       this.flightTrackingObs.pipe(first()).subscribe(async (currentInfo) => {
 
         // Check if he can start free flight
         try {
-          await this.canStartFreeFlight();
+          await this.canStartFreeFlight(type, flightNo, origin, destination);
         } catch (error) {
           console.error(error);
           reject(error);
           return;
         }
 
-        const depatureAirport = (await axios.default.get<IAirportData>(`${config.apiUrl}/airports/${icao.toLowerCase()}`)).data;
+        const depatureAirport = (await axios.default.get<IAirportData>(`${config.apiUrl}/airports/${origin.toLowerCase()}`)).data;
 
         if (!depatureAirport) {
           reject('Depature Airport not found');
@@ -252,6 +338,11 @@ export class FSUIPCInterface {
 
   }
 
+  private _positionToString(data: ITrackingData) {
+    let positionString = `${data.latitude};${data.longitude};${data.altitude}`;
+    return positionString;
+  }
+
   private _getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     var R = 6371; // Radius of the earth in km
     var dLat = this._deg2rad(lat2 - lat1);  // this._deg2rad below
@@ -269,10 +360,99 @@ export class FSUIPCInterface {
     return deg * (Math.PI / 180)
   }
 
-  onEndFlight(data: ITrackingData): void {
+  async onEndFlight(data: ITrackingData) {
     console.log('Ending flight');
     this._endDate = new Date();
     this.win.webContents.send('endFlight', data, this._startDate, this._endDate);
+    console.log('Ending flight with', data, this._startDate, this._endDate);
+
+    // Delete localLoggin file
+    this.fileHandle.close();
+    await fs.promises.unlink(this.loggingFilePath);
+  }
+
+  private _statusToString(flightStatus: flightStatus) {
+    return `flightStatus;${flightStatus}`;
+  }
+
+  private _parseLine(line: string): parseResult {
+    // Check if its a flightStatus or not
+    if (line.includes('flightStatus')) {
+      // Is Flight status. Split at ;
+      const value = line.split(';')[1];
+      return {
+        type: parseResultType.flightStatus,
+        value: flightStatus[value]
+      }
+    } else {
+      // Is position split at ; multiple times
+      const splits = line.split(';')
+      const lat = +splits[0];
+      const long = +splits[1];
+      const altitude = +splits[2];
+      return {
+        type: parseResultType.postition,
+        value: {
+          altitude,
+          lat,
+          long
+        }
+      }
+    }
+  }
+
+  private async checkForCrash(): Promise<boolean> {
+    let isCrashed = true;
+    try {
+      await fs.promises.access(this.loggingFilePath, fs.constants.F_OK);
+      isCrashed = true;
+    } catch (error) {
+      isCrashed = false;
+    }
+    return isCrashed;
+  }
+
+  // ACARS did crash. Send crash event to the client and resume the tracking
+  private async handleCrash() {
+
+    console.log('Handling crash');
+    // Create Read Stream
+    const liner = new lineByLine(this.loggingFilePath);
+    this.type = liner.next().toString();
+    this.flightNumber = liner.next().toString();
+    this._startDate = new Date(+liner.next().toString());
+    this.origin = liner.next().toString();
+    this.destination = liner.next().toString();
+    // Read the rest of the file
+    let line;
+    while (line = liner.next()) {
+      line = line.toString();
+      const result = await this._parseLine(line);
+
+      console.log(result);
+
+      if (result.type === parseResultType.flightStatus) {
+        const value = result.value as keyof typeof flightStatus;
+        console.log("value", value);
+        console.log('status', flightStatus[value]);
+        this.flightStatus.next(flightStatus[value]);
+      }
+    }
+
+    console.log('Crash handled, status now', this.flightStatus.getValue())
+    this.didCrash = true;
+
+    this.recoveryInterval = setInterval(this._checkRecovery.bind(this), 500);
+  }
+
+  private async _checkRecovery() {
+    const connected = await this.connectionObs.getValue();
+    if (connected) {
+      this._subscribeToTrackingObs();
+      clearInterval(this.recoveryInterval);
+      console.log('Flight recovered');
+      this.win.webContents.send('recovery');
+    }
   }
 }
 
@@ -298,4 +478,20 @@ export interface IAirportData {
   icao: string;
   lat: string;
   long: string;
+}
+
+interface parseResult {
+  type: parseResultType,
+  value: parseResultValuePosition | keyof typeof flightStatus
+}
+
+interface parseResultValuePosition {
+  lat: number;
+  long: number;
+  altitude: number;
+}
+
+enum parseResultType {
+  flightStatus,
+  postition,
 }

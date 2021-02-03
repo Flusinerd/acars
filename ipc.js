@@ -49,7 +49,7 @@ function registerIPC() {
         });
     });
     // Start flight event
-    electron_1.ipcMain.on('startFlight', function (event, icao) { return __awaiter(_this, void 0, void 0, function () {
+    electron_1.ipcMain.on('startFlight', function (event, type, flight, origin, destination) { return __awaiter(_this, void 0, void 0, function () {
         var data, error_1;
         return __generator(this, function (_a) {
             switch (_a.label) {
@@ -58,7 +58,7 @@ function registerIPC() {
                     _a.label = 1;
                 case 1:
                     _a.trys.push([1, 3, , 4]);
-                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFlight(icao)];
+                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFlight(type, flight, origin, destination)];
                 case 2:
                     data = _a.sent();
                     event.reply('startFlight', { canStart: true, data: data });
@@ -71,13 +71,13 @@ function registerIPC() {
             }
         });
     }); });
-    electron_1.ipcMain.on('startFreeFlight', function (event, _data) { return __awaiter(_this, void 0, void 0, function () {
+    electron_1.ipcMain.on('startFreeFlight', function (event, type, flight, origin, destination) { return __awaiter(_this, void 0, void 0, function () {
         var data, error_2;
         return __generator(this, function (_a) {
             switch (_a.label) {
                 case 0:
                     _a.trys.push([0, 2, , 3]);
-                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFreeFlight()];
+                    return [4 /*yield*/, main_1.FSUIPCApi.canStartFreeFlight(type, flight, origin, destination)];
                 case 1:
                     data = _a.sent();
                     event.reply('startFreeFlight', { canStart: true, data: data });

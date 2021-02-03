@@ -17,7 +17,7 @@ export class BookingsComponent implements OnInit {
 
   async onStartFlight(): Promise<void> {
     try {
-      await this._ipc.startFlight('eddl');
+      await this._ipc.startFlight('A320', 'MQT1922', 'EDDF', 'EDDL');
     } catch (error) {
       switch (error) {
         case 'Depature Airport not found':

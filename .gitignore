@@ -49,3 +49,4 @@ package-lock.json
 .DS_Store
 Thumbs.db
 simbrief.json
+flight.acars
