@@ -17,15 +17,16 @@
     </div>
   </div>
 
-  <a routerLink="home">Pilot Center</a>
-  <a routerLink="bookings">Bookings</a>
-  <a routerLink="freeflight">Free Flight</a>
-  <a routerLink="weather">Weather</a>
-  <a routerLink="log-book">Log-Book</a>
-  <a routerLink="live-map">Live-Map</a>
-  <a routerLink="flight-progress">Active Flight</a>
-  <a (click)="onTracking()">Start Tracking</a>
-  <a (click)="testSimbrief()">test simbrief</a>
+  <a routerLink="home" routerLinkActive="active-route">Pilot Center</a>
+  <a routerLink="bookings" routerLinkActive="active-route">Bookings</a>
+  <a routerLink="freeflight" routerLinkActive="active-route">Free Flight</a>
+  <a routerLink="weather" routerLinkActive="active-route">Weather</a>
+  <a routerLink="log-book" routerLinkActive="active-route">Log-Book</a>
+  <a routerLink="live-map" routerLinkActive="active-route">Live-Map</a>
+  <a routerLink="flight-progress" routerLinkActive="active-route">Active Flight</a>
+  <a routerLink="simbrief" routerLinkActive="active-route">Briefing</a>
+  <a (click)="onTracking()" class="action-link">Start Tracking</a>
+  <a (click)="testSimbrief()" class="action-link">test simbrief</a>
 
 
 </div>

@@ -31,7 +31,7 @@
 
     padding: 12px 0px 12px 10px;
 
-    color: #ffffff;
+    color: #999;
 
     transition: all 200ms ease;
     vertical-align: middle;
@@ -98,4 +98,12 @@ div.status {
     padding: 5px 10px;
   }
 
+}
+
+.active-route {
+  color: #fff !important;
+}
+
+.action-link {
+  color: #fff !important;
 }
