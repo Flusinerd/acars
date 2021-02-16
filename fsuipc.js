@@ -97,7 +97,6 @@ var FSUIPCInterface = /** @class */ (function () {
                                 return [3 /*break*/, 4];
                             case 3:
                                 error_1 = _a.sent();
-                                console.log(error_1);
                                 if (error_1.code === 2 && this.connectionObs.getValue() === true) {
                                     this.connectionObs.next(false);
                                     console.log('Not connected');

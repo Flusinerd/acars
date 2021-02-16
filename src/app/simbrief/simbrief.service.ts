@@ -184,7 +184,9 @@ export class SimbriefService {
   }
 
   public async mockresponse(): Promise<OFPResponse> {
-    return this._parseXml((await this._http.get(`${AppConfig.apiUrl}/pilots/test`, {responseType: 'text'}).toPromise()));
+    const ofp = this._parseXml((await this._http.get(`${AppConfig.apiUrl}/pilots/test`, {responseType: 'text'}).toPromise()));
+    this.briefing.next(ofp);
+    return ofp;
   }
 
   public getPdf(url: string): Promise<any> {
