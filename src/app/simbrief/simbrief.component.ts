@@ -1,4 +1,5 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { SimbriefService } from './simbrief.service';
 
 @Component({
@@ -10,6 +11,7 @@ export class SimbriefComponent implements OnInit {
 
   briefing;
   sidebarVisible = false;
+  briefingSUB: Subscription;
 
   constructor(
     private _simbrief: SimbriefService,
@@ -23,6 +25,10 @@ export class SimbriefComponent implements OnInit {
     // this.briefing = file;
     // console.log("🚀 ~ file: simbrief.component.ts ~ line 23 ~ SimbriefComponent ~ ngOnInit ~ briefing", this.briefing)
     // this._changeDetectorRef.detectChanges();
+    this.briefingSUB = this._simbrief.briefing.subscribe((data) => {
+      this.briefing = data?.OFP || null;
+      console.log('briefing', this.briefing);
+    })
   }
 
   async getPdf() {
@@ -31,4 +37,17 @@ export class SimbriefComponent implements OnInit {
     // return await this._simbrief.getUrl(pdf);
   }
 
+  appendZeros(time: number): string {
+    if (time < 10) {
+      return '0'+time;
+    } else {
+      return ''+time;
+    }
+  }
+
+  getTime(time: number): string {
+    const minutes = Math.round(time);
+    const hours = Math.floor(minutes/60);
+    return ''+hours+':'+this.appendZeros(minutes)+' h';
+  }
 }

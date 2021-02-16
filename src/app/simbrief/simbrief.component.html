@@ -3,5 +3,30 @@
   useBrowserLocale="true" style="width: 100%; height: 100%;"></ngx-extended-pdf-viewer> -->
 
 <div class="main">
-
+  <div *ngIf="briefing" class="flight">
+    <h2>Flight</h2>
+    <div class="gridLayout">
+      <div class="left">
+        <div class="item"><span class="key">Flight-No</span><span class="value">NONE</span></div>
+        <div class="item"><span class="key">Aircraft</span><span class="value">{{briefing.aircraft.icaocode._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Callsign</span><span class="value">{{briefing.aircraft.reg._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Origin</span><span class="value">{{briefing.origin.icao_code._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Destination</span><span class="value">{{briefing.destination.icao_code._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Distance</span><span class="value">{{briefing.general.route_distance._text || 'NONE'}} km</span></div>
+        <div class="item"><span class="key">Alternate</span><span class="value">{{briefing.alternate.icao_code._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Passengers</span><span class="value">{{briefing.general.passengers._text || 'NONE'}}</span></div>
+      </div>
+      <div class="right">
+        <div class="item"><span class="key">Cruise</span><span class="value">FL{{briefing.atc.initial_alt._text || 'NONE'}}</span></div>
+        <div class="item"><span class="key">Depart</span><span class="value">{{appendZeros(+briefing.api_params.dephour._text/3600) || '-'}}:{{appendZeros(+briefing.api_params.depmin._text/60) || '-'}} UTC</span></div>
+        <div class="item"><span class="key">Air Time</span><span class="value">{{getTime(+briefing.times.est_time_enroute._text/60) || '-'}}</span></div>
+        <div class="item"><span class="key">Block Time</span><span class="value">{{getTime(+briefing.times.est_block._text/60) || '-'}}</span></div>
+        <div class="item"><span class="key">Block Fuel</span><span class="value">{{briefing.fuel.plan_ramp._text || '-'}} kg</span></div>
+        <div class="item"><span class="key">Extra Fuel</span><span class="value">{{briefing.fuel.extra._text || '-'}} kg</span></div>
+        <div class="item"><span class="key">ZFW</span><span class="value">{{briefing.weights.est_zfw._text || '-'}} kg</span></div>
+        <div class="item"><span class="key">TOW</span><span class="value">{{briefing.weights.est_tow._text || '-'}} kg</span></div>
+        
+      </div>
+    </div>
+  </div>
 </div>
