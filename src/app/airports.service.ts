@@ -18,11 +18,11 @@ export class AirportsService {
   async getAirports(take = 100, skip = 0): Promise<IAirport[]> {
     return this._http.get<IAirport[]>(`${AppConfig.apiUrl}/airports?take=${take}&skip=${skip}`)
     .pipe(map((response) => {
-      const airports = response.map((airport) => { airport.icao = airport.icao.toUpperCase(); return airport })
+      const airports = response.map((airport) => { airport.ident = airport.ident.toUpperCase(); return airport })
 
       const currentAirports = this.airports.getValue();
       for(const airport of airports) {
-        let foundAirport = currentAirports.find((foundPort) => airport.icao === foundPort.icao);
+        let foundAirport = currentAirports.find((foundPort) => airport.ident === foundPort.ident);
         if (foundAirport) {
           foundAirport = airport;
         } else {
@@ -42,7 +42,7 @@ export class AirportsService {
 }
 
 export interface IAirport {
-  icao: string;
-  lat: number;
-  long: number;
+  ident: string;
+  latitude_deg: number;
+  longitude_deg: number;
 }

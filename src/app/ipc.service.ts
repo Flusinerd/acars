@@ -1,8 +1,9 @@
-import { EventEmitter, Injectable } from '@angular/core';
+import { ApplicationRef, ChangeDetectorRef, EventEmitter, Injectable, NgZone } from '@angular/core';
 import { IpcRenderer } from 'electron';
 import { BehaviorSubject } from 'rxjs';
 import { ITrackingData } from '../../trackingData.interface';
 import { flightStatus } from '../../flightStatus';
+import { Router } from '@angular/router';
 
 
 @Injectable({
@@ -21,7 +22,13 @@ export class IpcService {
 
   public endFlightEvent = new EventEmitter<IEndFlight>();
 
-  constructor() {
+  public recoveryEvent = new EventEmitter<IRecoveryEvent>();
+
+  constructor(
+    private _router: Router,
+    private appRef: ApplicationRef,
+    private _ngZone: NgZone
+  ) {
     if (window.require) {
       try {
         this._ipc = window.require('electron').ipcRenderer;
@@ -34,9 +41,9 @@ export class IpcService {
     }
   }
 
-  startFlight(type: string, flight: string, origin: string, destination: string) {
+  startFlight(type: string, flight: string, origin: string, destination: string, cargo: number, pax: number) {
     return new Promise((resolve, reject) => {
-      this._ipc.send('startFlight', type, flight, origin, destination);
+      this._ipc.send('startFlight', type, flight, origin, destination, cargo, pax);
       this._ipc.once('startFlight', (event, data: IStartFlightResponse) => {
         if (data.canStart === true) {
           this.currentData.next(data.data);
@@ -49,9 +56,9 @@ export class IpcService {
     })
   }
 
-  startFreeFlight(type: string, flight: string, origin: string, destination: string) {
+  startFreeFlight(type: string, flight: string, origin: string, destination: string, cargo: number, pax: number) {
     return new Promise<ITrackingData>((resolve, reject) => {
-      this._ipc.send('startFreeFlight', type, flight, origin, destination);
+      this._ipc.send('startFreeFlight', type, flight, origin, destination, cargo, pax);
       this._ipc.once('startFreeFlight', (event, data: IStartFlightResponse) => {
         if (data.canStart === true) {
           this.currentData.next(data.data);
@@ -76,6 +83,7 @@ export class IpcService {
 
   private _subscribeToTrackingData() {
     return new Promise<void>((resolve, reject) => {
+      console.log('Subbed to data');
       if (!this._subscribedToTrackingData) {
         this._ipc.on('trackingData', (event, data: ITrackingData) => {
           this.currentData.next(data);
@@ -120,6 +128,12 @@ export class IpcService {
         end
       });
     })
+
+    this._ipc.once('recovery', async (event, origin, destination, cargo, pax) => {
+      console.log('Recovery send', origin, destination);
+      await this.startTracking();
+      this.recoveryEvent.emit({origin, destination, cargo, pax});
+    })
   }
 
 
@@ -128,6 +142,13 @@ export class IpcService {
 export interface IStartFlightResponse {
   canStart: boolean;
   data: ITrackingData;
+}
+
+export interface IRecoveryEvent {
+  origin: string;
+  destination: string;
+  cargo: number,
+  pax: number
 }
 
 // export interface ITrackingData {

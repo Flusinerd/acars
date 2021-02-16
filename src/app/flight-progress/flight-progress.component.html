@@ -5,6 +5,7 @@
   </ng-container>
   <ng-container *ngIf="currentData">
 
+    <p><span class="w-400 light">Flight Status: </span> {{ flightStatus?.toString() || 'Pre-Depature' }}</p>
     <p><span class="w-400 light">Altitude: </span> {{currentData.altitude | number:'1.0-0' }} ft</p>
     <p><span class="w-400 light">Vertical Speed: </span> {{currentData.vs | number:'1.0-0' }} ft/min</p>
     <p><span class="w-400 light">Heading: </span> {{currentData.heading | number:'1.0-0' }}°</p>

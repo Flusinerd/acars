@@ -14,4 +14,5 @@ export interface ITrackingData {
   radioAlt: number;
   flapsControl: number;
   landingLights: boolean;
+  aircraftName: string;
 }

@@ -17,7 +17,7 @@ export class FSUIPCInterface {
 
   flightStatus = new BehaviorSubject<flightStatus>(flightStatus.preDepature);
 
-  flightTrackingObs: Observable<ITrackingData>;
+  flightTrackingObs = new BehaviorSubject<ITrackingData>(null);
   private _connectTimer;
 
   private _lastVsReadings = [];
@@ -31,6 +31,8 @@ export class FSUIPCInterface {
   private flightNumber: string;
   private origin: string;
   private destination: string;
+  private cargo: number;
+  private pax: number;
   private loggingFilePath = join(__dirname, 'flight.acars');
   private didCrash = false;
   private recoveryInterval;
@@ -48,8 +50,6 @@ export class FSUIPCInterface {
     this.flightStatus.subscribe((status) => {
       this.win.webContents.send('flightStatus', status);
     })
-
-    console.log('Loggin Path', this.loggingFilePath);
   }
 
   async connectToSim(): Promise<void> {
@@ -58,11 +58,15 @@ export class FSUIPCInterface {
         await this._api.init();
         this.connectionObs.next(true);
 
-        this.flightTrackingObs = this._api.listen(3000, fsuipcStrings, true)
-        console.log('Flight Tracking Obs set')
+        this._api.listen(3000, fsuipcStrings, true).subscribe(
+          {
+            complete: () => this.flightTrackingObs.complete(),
+            error: x => { console.error('error', x); this.handleFSUIPCError(x)},
+            next: x => this.flightTrackingObs.next(x)
+          }
+        )
         const isCrashed = await this.checkForCrash();
-        console.log("🚀 ~ file: fsuipc.ts ~ line 62 ~ FSUIPCInterface ~ this._connectTimer=setInterval ~ isCrashed", isCrashed)
-        
+
         if (isCrashed) {
           // Do stuff to handle crash
           this.handleCrash();
@@ -71,7 +75,6 @@ export class FSUIPCInterface {
         console.log('Connected to sim');
         clearInterval(this._connectTimer);
       } catch (error) {
-        console.log('Connection error', error);
         if (error.code === 2 && this.connectionObs.getValue() === true) {
           this.connectionObs.next(false);
           console.log('Not connected');
@@ -127,6 +130,8 @@ export class FSUIPCInterface {
             this.fileHandle.write(this._startDate.valueOf() + '\n');
             this.fileHandle.write(this.origin + '\n');
             this.fileHandle.write(this.destination + '\n');
+            this.fileHandle.write(this.cargo + '\n');
+            this.fileHandle.write(this.pax + '\n');
             this.fileHandle.write(this._statusToString(flightStatus.taxiOut) + '\n');
             // this.fileHandle.write(this._positionToString(data) + '\n');
           }
@@ -258,18 +263,20 @@ export class FSUIPCInterface {
           break;
       }
 
-    }, (error) => {
-      // Error code 12 on disconnect
-      if (error.code === 12) {
-        // Disconected 
-        this.connectionObs.next(false);
-        this.connectToSim();
-      }
-    })
+    });
   }
 
+  async handleFSUIPCError(error: any) {
+    console.log(error);
+    // Error code 12 on disconnect
+    if (error.code === 12) {
+      // Disconected 
+      this.connectionObs.next(false);
+      this.connectToSim();
+    }
+  }
 
-  async canStartFreeFlight(type: string, flightNo: string, origin: string, destination: string): Promise<ITrackingData> {
+  async canStartFreeFlight(type: string, flightNo: string, origin: string, destination: string, cargo: number, pax: number): Promise<ITrackingData> {
     return new Promise(async (resolve, reject) => {
       if (!this.connectionObs.getValue()) {
         console.log('No connection to sim');
@@ -281,8 +288,10 @@ export class FSUIPCInterface {
       this.flightNumber = flightNo;
       this.origin = origin;
       this.destination = destination;
+      this.cargo = cargo;
+      this.pax = pax;
 
-      
+
       this._subscribeToTrackingObs();
 
       this.flightTrackingObs.pipe(first()).subscribe((currentInfo) => {
@@ -305,13 +314,13 @@ export class FSUIPCInterface {
     })
   }
 
-  async canStartFlight(type: string, flightNo: string, origin: string, destination: string): Promise<ITrackingData> {
+  async canStartFlight(type: string, flightNo: string, origin: string, destination: string, cargo: number, pax: number): Promise<ITrackingData> {
     return new Promise(async (resolve, reject) => {
       this.flightTrackingObs.pipe(first()).subscribe(async (currentInfo) => {
 
         // Check if he can start free flight
         try {
-          await this.canStartFreeFlight(type, flightNo, origin, destination);
+          await this.canStartFreeFlight(type, flightNo, origin, destination, cargo, pax);
         } catch (error) {
           console.error(error);
           reject(error);
@@ -376,13 +385,43 @@ export class FSUIPCInterface {
   }
 
   private _parseLine(line: string): parseResult {
+
+    console.log('Test', 'Level Flight' as flightStatus)
+    if (line.length === 0) {
+      return {
+        type: parseResultType.emptyLine,
+        value: undefined
+      }
+    }
     // Check if its a flightStatus or not
     if (line.includes('flightStatus')) {
       // Is Flight status. Split at ;
       const value = line.split(';')[1];
+      let returnValue = flightStatus.preDepature;
+      if (value === 'Taxi Out') {
+        returnValue = flightStatus.taxiOut;
+      } else if (value === 'Depature') {
+        returnValue = flightStatus.depature;
+      } else if (value === 'Climb') {
+        returnValue = flightStatus.climb;
+      } else if (value === 'Level Flight') {
+        returnValue = flightStatus.levelFlight;
+      } else if (value === 'Descent') {
+        returnValue = flightStatus.descent;
+      } else if (value === 'Approach') {
+        returnValue = flightStatus.approach;
+      } else if (value === 'Landing') {
+        returnValue = flightStatus.landing;
+      } else if (value === 'Parked') {
+        returnValue = flightStatus.parked;
+      } else if (value === 'Taxi To Parking') {
+        returnValue = flightStatus.taxiToParking;
+      } else if (value === 'Go Around') {
+        returnValue = flightStatus.goAround;
+      }
       return {
         type: parseResultType.flightStatus,
-        value: flightStatus[value]
+        value: returnValue
       }
     } else {
       // Is position split at ; multiple times
@@ -423,19 +462,16 @@ export class FSUIPCInterface {
     this._startDate = new Date(+liner.next().toString());
     this.origin = liner.next().toString();
     this.destination = liner.next().toString();
+    this.cargo = liner.next().toString();
+    this.pax = liner.next().toString();
     // Read the rest of the file
     let line;
     while (line = liner.next()) {
       line = line.toString();
-      const result = await this._parseLine(line);
-
-      console.log(result);
+      const result = await this._parseLine(line.toString());
 
       if (result.type === parseResultType.flightStatus) {
-        const value = result.value as keyof typeof flightStatus;
-        console.log("value", value);
-        console.log('status', flightStatus[value]);
-        this.flightStatus.next(flightStatus[value]);
+        this.flightStatus.next(result.value as flightStatus);
       }
     }
 
@@ -451,8 +487,13 @@ export class FSUIPCInterface {
       this._subscribeToTrackingObs();
       clearInterval(this.recoveryInterval);
       console.log('Flight recovered');
-      this.win.webContents.send('recovery');
+      setTimeout(this._sendRecovery.bind(this), 10000);
     }
+  }
+
+  private _sendRecovery() {
+    this.win.webContents.send('recovery', this.origin, this.destination, this.cargo, this.pax);
+    this.win.webContents.send('flightStatus', this.flightStatus.getValue());
   }
 }
 
@@ -471,7 +512,8 @@ const fsuipcStrings = [
   'planeOnground',
   'radioAlt',
   'flapsControl',
-  'landingLights'
+  'landingLights',
+  'aircraftName',
 ]
 
 export interface IAirportData {
@@ -482,7 +524,7 @@ export interface IAirportData {
 
 interface parseResult {
   type: parseResultType,
-  value: parseResultValuePosition | keyof typeof flightStatus
+  value: parseResultValuePosition | flightStatus | undefined
 }
 
 interface parseResultValuePosition {
@@ -494,4 +536,5 @@ interface parseResultValuePosition {
 enum parseResultType {
   flightStatus,
   postition,
+  emptyLine
 }

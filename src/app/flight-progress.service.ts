@@ -1,15 +1,16 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Subscription } from 'rxjs';
-import { IEndFlight, IpcService } from './ipc.service'
+import { IEndFlight, IpcService, IRecoveryEvent } from './ipc.service'
 import { AirportsService } from './airports.service';
 import { first } from 'rxjs/operators';
 import { Socket } from 'ngx-socket-io';
 import { IPlaneType, PlanesService } from './planes.service';
-import { PilotService } from './pilot.service';
+import { PilotService, Rank } from './pilot.service';
 import { HttpClient } from '@angular/common/http';
 import { AppConfig } from '../environments/environment';
 import { ITrackingData } from '../../trackingData.interface';
 import { flightStatus } from '../../flightStatus';
+import { IFlightData } from './live-map/live-map.component';
 
 @Injectable({
   providedIn: 'root'
@@ -30,6 +31,9 @@ export class FlightProgressService {
 
   flightNumber: string;
   isRegisterd = false;
+  route = "";
+
+  ranks = Rank
 
   totalDistanceFlown = 0;
 
@@ -92,13 +96,12 @@ export class FlightProgressService {
   currentData: BehaviorSubject<ITrackingData>;
 
   flightStatus = new BehaviorSubject<flightStatus>(flightStatus.preDepature);
-
   dataSub: undefined | Subscription;
-
   isScheduled = false;
-
   private _prevLat: number;
   private _prevLong: number;
+
+  isRecovery = false;
 
   cargo: number;
   pax: number;
@@ -128,40 +131,68 @@ export class FlightProgressService {
           const distanceFlown = this._getDistanceFromLatLonInKm(this._prevLat, this._prevLong, data.latitude, data.longitude) / 1.852;
           this.totalDistanceFlown += distanceFlown;
         }
+        this._prevLat = data.latitude;
+        this._prevLong = data.longitude;
+      }
+    })
+    this.socket.fromEvent('trackingData').subscribe((result: ITrackingDataResponse) => {
+      if (!result.success) {
+        this.isRegisterd = false;
       }
     })
     this._ipc.endFlightEvent.subscribe((data) => {
       this.endFlight(data);
     })
+    this._ipc.recoveryEvent.subscribe((data:IRecoveryEvent) => {
+      this.isRegisterd = true;
+      this.isRecovery = true;
+      console.log('Is recovery', this.isRecovery);
+      this.depatureIcao = data.origin;
+      this.arrivalIcao = data.destination;
+      this.cargo = data.cargo;
+      this.pax = data.pax
+    })
   }
 
   async endFlight(data: IEndFlight) {
-    const duration = (data.end.valueOf() - data.start.valueOf()) / 1000;
+    let type = data.data.aircraftName;
+    try {
+      type = (await this._planesService.getPlaneByAtcTypeCode(data.data.atcTypeCode).toPromise()).plane.typeCode;
+    } catch (error) {
+      console.log(error);
+    }
     const body: CreateFinishedFlightDto = {
+      flighNumber: this.flightNumber,
       arrivalIcao: this.arrivalIcao,
       depatureIcao: this.depatureIcao,
       cargo: this.cargo,
       distance: this.totalDistanceFlown,
-      duration: duration,
       pax: this.pax,
       pilotId: this._pilotService.currentPilot.getValue().pilotId,
-      planeTypeCode: (await this._planesService.getPlaneByAtcTypeCode(data.data.atcTypeCode).toPromise()).plane.typeCode || 'unk',
+      planeTypeCode: type,
+      planeName: data.data.aircraftName,
+      arrivalTime: data.end,
+      depatureTime: data.start,
+      comment: '',
+      landingRate: data.data.vsAtTouchdown,
+      route: this.route,
     }
     console.log('Ending flight', body);
     await this._http.post(`${AppConfig.apiUrl}/finished-flights`, body).toPromise();
+    this.isRegisterd = false;
   }
 
   private _getDepatureData(icao: string): void {
     this._airports.getAirport(icao).pipe(first()).subscribe((data) => {
-      this.depatureLat = data.lat;
-      this.depatureLong = data.long;
+      this.depatureLat = data.latitude_deg;
+      this.depatureLong = data.longitude_deg;
     })
   }
 
   private _getArrivalData(icao: string): void {
     this._airports.getAirport(icao).pipe(first()).subscribe((data) => {
-      this.arrivalLat = data.lat;
-      this.arrivalLong = data.long;
+      this.arrivalLat = data.latitude_deg;
+      this.arrivalLong = data.longitude_deg;
     })
   }
 
@@ -182,7 +213,10 @@ export class FlightProgressService {
     return deg * (Math.PI / 180)
   }
 
-  async registerFlight(depatureIcao: string, arrivalIcao: string, flightNumber: string, isScheduled = false): Promise<void> {
+  async registerFlight(depatureIcao: string, arrivalIcao: string, flightNumber: string, cargo:number, pax: number, isScheduled = false): Promise<void> {
+    if (this.isRegisterd) {
+      return;
+    }
     this.totalDistanceFlown = 0;
     if (!(this.currentData.getValue())) {
       throw new Error('No tracking data');
@@ -194,7 +228,10 @@ export class FlightProgressService {
     const data = this.currentData.getValue();
 
     // Get Plane type from backend
-    let planeType = (await this._planesService.getPlaneByAtcTypeCode(data.atcTypeCode).toPromise()).plane;
+    let planeType;
+    try {
+      planeType = (await this._planesService.getPlaneByAtcTypeCode(data.aircraftName).toPromise()).plane;
+    } catch (error) {}
     if (!planeType) {
       planeType = {
         atcTypeCodes: null,
@@ -202,6 +239,8 @@ export class FlightProgressService {
         typeCode: 'unk',
       };
     }
+    this.cargo = cargo;
+    this.pax = pax;
 
     const flightData: CreateFlightDto = {
       lat: data.latitude,
@@ -256,13 +295,23 @@ export interface IRegistrationResponse {
 }
 
 export class CreateFinishedFlightDto {
+  flighNumber: string;
   depatureIcao: string;
   arrivalIcao: string;
-  duration: number;
   distance: number;
   pax: number;
   cargo: number;
+  route: string;
+  planeName: string;
+  depatureTime: Date;
+  arrivalTime: Date;
+  landingRate: number;
+  comment: string;
   pilotId: number;
   planeTypeCode: string;
 }
 
+export interface ITrackingDataResponse {
+  success: boolean;
+  error?: string;
+}

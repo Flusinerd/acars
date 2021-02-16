@@ -1,0 +1,48 @@
+<div class="select">
+  <select [(ngModel)]="selectedCategory" (ngModelChange)="onSelect()">
+    <option selected disabled value="-1">Select a Category</option>
+    <option [value]="i" *ngFor="let category of weatherChartCategories; let i = index;">{{category}}</option>
+  </select>
+</div>
+<div class="select" *ngIf="selectedCategory == 0">
+  <select [(ngModel)]="selectedWeatherChart" (ngModelChange)="onSelect()">
+    <option selected disabled value="-1">Select a Region</option>
+    <option [value]="i" *ngFor="let image of weatherCharts; let i = index;">{{image.name}}</option>
+  </select>
+</div>
+
+<div class="row">
+
+  <!-- Timescale -->
+  <div class="select" *ngIf="selectedCategory == 1">
+    <select [(ngModel)]="selectedTimeScale" (ngModelChange)="onSelect()">
+      <option selected disabled value="-1">Select a Timescale</option>
+      <option [value]="i" *ngFor="let timeScale of timeScales; let i = index;">{{timeScale}}</option>
+    </select>
+  </div>
+
+  <!-- Region -->
+  <div class="select" *ngIf="selectedCategory == 1">
+    <select [(ngModel)]="selectedTimeScale" (ngModelChange)="onSelect()">
+      <option selected disabled value="-1">Select a Timescale</option>
+      <option [value]="i" *ngFor="let timeScale of timeScales; let i = index;">{{timeScale}}</option>
+    </select>
+  </div>
+
+  <!-- FL -->
+  <div class="select" *ngIf="selectedCategory == 1">
+    <select [(ngModel)]="selectedTimeScale" (ngModelChange)="onSelect()">
+      <option selected disabled value="-1">Select a Timescale</option>
+      <option [value]="i" *ngFor="let timeScale of timeScales; let i = index;">{{timeScale}}</option>
+    </select>
+  </div>
+
+</div>
+
+<ng-container *ngFor="let image of weatherCharts; let i = index;">
+  <img [src]="image.url" *ngIf="selectedCategory == 0 && selectedWeatherChart == i">
+</ng-container>
+
+<!-- <ng-container *ngFor="let image of weatherCharts; let i = index;">
+  <img [src]="image.url" *ngIf="selectedCategory == 1 && selectedWeatherChart == i">
+</ng-container> -->

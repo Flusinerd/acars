@@ -15,9 +15,13 @@ export class BookingsComponent implements OnInit {
   ngOnInit(): void {
   }
 
+  /**
+   * @todo Add Simbrief generation
+   */
   async onStartFlight(): Promise<void> {
     try {
-      await this._ipc.startFlight('A320', 'MQT1922', 'EDDF', 'EDDL');
+      // NEEDS SIMBRIEF
+      await this._ipc.startFlight('A320', 'MQT1922', 'EDDF', 'EDDL', 30000, 100);
     } catch (error) {
       switch (error) {
         case 'Depature Airport not found':

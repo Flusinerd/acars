@@ -16,34 +16,34 @@
     </div>
   </div>
 
-  <!-- <div class="row">
+  <div class="row">
     <div class="input-group">
       <input type="text" name="flightNo" placeholder="&nbsp;" autocomplete="off" formControlName="flightNo">
       <label for="flightNo">Flight Number</label>
       <span class="error-text" *ngIf="freeFlightForm.get('flightNo').hasError('callsign')">Must contain MQT or MQC</span>
       <span class="error-text" *ngIf="freeFlightForm.get('flightNo').hasError('required')">Required</span>
     </div>
-    <div class="input-group">
+    <!-- <div class="input-group">
       <input type="text" name="cruiseLevel " placeholder="&nbsp;" formControlName="cruiseLevel">
       <label for="cruiseLevel">Cruise Level </label>
       <span class="error-text" *ngIf="freeFlightForm.get('cruiseLevel').hasError('FL')">Must be FL and start with "FL"</span>
       <span class="error-text" *ngIf="freeFlightForm.get('cruiseLevel').hasError('required')">Required</span>
-    </div>
-  </div> -->
+    </div> -->
+  </div>
 
-  <!-- <div class="row">
+  <div class="row">
     <div class="input-group">
-      <input type="text" name="passengers" placeholder="&nbsp;" formControlName="passengers">
+      <input type="number" name="passengers" placeholder="&nbsp;" formControlName="passengers">
       <label for="passengers">PAX Count</label>
       <span class="error-text" *ngIf="freeFlightForm.get('passengers').hasError('required')">Required</span>
     </div>
 
     <div class="input-group">
-      <input type="text" name="cargo" placeholder="&nbsp;" formControlName="cargo">
+      <input type="number" name="cargo" placeholder="&nbsp;" formControlName="cargo">
       <label for="cargo">Cargo (kg)</label>
       <span class="error-text" *ngIf="freeFlightForm.get('cargo').hasError('required')">Required</span>
     </div>
-  </div> -->
+  </div>
 
   <!-- <div class="input-group">
     <textarea type="text" name="route" placeholder="&nbsp;" formControlName="route"></textarea>

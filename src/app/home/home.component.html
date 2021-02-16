@@ -4,7 +4,19 @@
   </h2>
   
   <h3><span class="w-400 light">Your current Location: </span>{{pilot.currentLocation | uppercase}}</h3>
-  <h3><span class="w-400 light">Your current rank: </span>CAPTAIN</h3>
+  <h3><span class="w-400 light">
+    Your current rank: </span>{{pilot.rank | uppercase}}
+    <img src="assets/icons/ranks/1.png" class="rank-icon" *ngIf="pilot.rank == ranks.STUDENT">
+    <img src="assets/icons/ranks/2.png" class="rank-icon" *ngIf="pilot.rank == ranks.PRIVATE_PILOT">
+    <img src="assets/icons/ranks/3.png" class="rank-icon" *ngIf="pilot.rank == ranks.SECOND_OFFICER">
+    <img src="assets/icons/ranks/4.png" class="rank-icon" *ngIf="pilot.rank == ranks.JUNIOR_FIRST_OFFICER">
+    <img src="assets/icons/ranks/5.png" class="rank-icon" *ngIf="pilot.rank == ranks.FIRST_OFFICER">
+    <img src="assets/icons/ranks/6.png" class="rank-icon" *ngIf="pilot.rank == ranks.SENIOR_FIRST_OFFICER">
+    <img src="assets/icons/ranks/7.png" class="rank-icon" *ngIf="pilot.rank == ranks.CAPTAIN">
+    <img src="assets/icons/ranks/8.png" class="rank-icon" *ngIf="pilot.rank == ranks.FLIGHT_CAPTAIN">
+    <img src="assets/icons/ranks/9.png" class="rank-icon" *ngIf="pilot.rank == ranks.SENIOR_CAPTAIN">
+    <img src="assets/icons/ranks/10.png" class="rank-icon" *ngIf="pilot.rank == ranks.VA_TRANSPORT_PILOT">
+  </h3>
   
   <h4><span class="w-400 light">Total Hours: </span>{{pilot.flightHours | number:'1.0-0'}}</h4>
   <h4><span class="w-400 light">Total Flights: </span>{{pilot.totalFlights | number:'1.0-0'}}</h4>
