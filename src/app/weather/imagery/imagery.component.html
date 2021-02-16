@@ -1,0 +1,10 @@
+<div class="select">
+  <select [(ngModel)]="selectedImageIndex" (ngModelChange)="onSelect()">
+    <option selected disabled value="-1">Select a Region</option>
+    <option [value]="i" *ngFor="let image of urls; let i = index;">{{image.name}}</option>
+  </select>
+</div>
+  
+<ng-container *ngFor="let image of urls; let i = index">
+  <img [src]="image.url" style="width: 50vw;" *ngIf="selectedImageIndex == i">
+</ng-container>

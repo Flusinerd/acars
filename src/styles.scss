@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600&display=swap');
-
+@import '~@angular/material/theming';
+@include mat-core();
+@import url('./select.scss');
 /* You can add global styles to this file, and also import other style files */
 html, body {
   margin: 0;
@@ -31,21 +33,19 @@ h1, h2, h3, h4, h5, h6 {
   color: #a3a3a3;
 }
 
+span.error-text{
+  font-size: 12px;
+  font-family: "Montserrat", sans-serif;
+  font-weight: 400;
+  color: #ff4646;
+}
+
 div.input-group {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   position: relative;
   margin-bottom: 16px;
-
-  span.error-text{
-    font-size: 12px;
-    font-family: "Montserrat", sans-serif;
-    font-weight: 400;
-    color: #ff4646;
-    margin-top: 2px;
-    display: none;
-  }
 
   input, textarea {
     width: calc(100% - 4px);
@@ -59,6 +59,11 @@ div.input-group {
     font-size: 16px;
 
     z-index: 1;
+  }
+
+  span.error-text{
+    margin-top: 2px;
+    display: none;
   }
 
   input.ng-invalid:not(.ng-pristine), textarea.ng-invalid:not(.ng-pristine) {

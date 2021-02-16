@@ -14,19 +14,19 @@ export function registerIPC() {
   })
 
   // Start flight event
-  ipcMain.on('startFlight', async (event, type: string, flight: string, origin: string, destination: string) => {
+  ipcMain.on('startFlight', async (event, type: string, flight: string, origin: string, destination: string, cargo: number, pax: number) => {
     console.log('starFlight Event triggered');
     try {
-      const data = await FSUIPCApi.canStartFlight(type, flight, origin, destination);
+      const data = await FSUIPCApi.canStartFlight(type, flight, origin, destination, cargo, pax);
       event.reply('startFlight', {canStart: true, data});
     } catch (error) {
       event.reply('startFlight', {canStart: false, data: error});
     }
   })
 
-  ipcMain.on('startFreeFlight', async (event, type: string, flight: string, origin: string, destination: string) => {
+  ipcMain.on('startFreeFlight', async (event, type: string, flight: string, origin: string, destination: string, cargo: number, pax: number) => {
     try {
-      const data = await FSUIPCApi.canStartFreeFlight(type, flight, origin, destination);
+      const data = await FSUIPCApi.canStartFreeFlight(type, flight, origin, destination, cargo, pax);
       event.reply('startFreeFlight', {canStart: true, data});
     } catch(error) {
       event.reply('startFreeFlight', {canStart: false, data: error});
@@ -36,6 +36,7 @@ export function registerIPC() {
   ipcMain.on('startTracking', (event) => {
     console.log('Starting flight tracking');
     if (!trackingSub) {
+      event.reply('trackingData', FSUIPCApi.flightTrackingObs.getValue())
       trackingSub = FSUIPCApi.flightTrackingObs.subscribe((data) => {
         event.reply('trackingData', data);
       })

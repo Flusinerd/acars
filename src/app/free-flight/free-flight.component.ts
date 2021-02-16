@@ -31,10 +31,10 @@ export class FreeFlightComponent implements OnInit {
     this.freeFlightForm = this._fb.group({
       origin: ['', [Validators.required, icaoValidator()]],
       destination: ['', [Validators.required, icaoValidator()]],
-      // flightNo: ['', [Validators.required, flightNoValidator()]],
+      flightNo: ['', [Validators.required, flightNoValidator()]],
+      passengers: ['', [Validators.required]],
+      cargo: ['', [Validators.required]],
       // cruiseLevel: ['', [Validators.required, flValidator()]],
-      // passengers: ['', [Validators.required]],
-      // cargo: ['', [Validators.required]],
       // route: ['', [Validators.required]]
     })
   }
@@ -44,22 +44,25 @@ export class FreeFlightComponent implements OnInit {
   }
 
   async onStartFlight(): Promise<void> {
-    console.log(await this._simBriefService.mockresponse());
+    // console.log(await this._simBriefService.mockresponse());
+    const origin = this.freeFlightForm.get('origin').value as string;
+    const destination = this.freeFlightForm.get('destination').value as string;
+    const callSign = this.freeFlightForm.get('flightNo').value as string;
+    const cargo = this.freeFlightForm.get('cargo').value as number;
+    const pax = this.freeFlightForm.get('passengers').value as number;
     try {
-      const data = await this._icp.startFreeFlight('A320', 'MQT1922', 'EDDF', 'EDDL');
+      const data = await this._icp.startFreeFlight('A320', callSign.toUpperCase(), origin.toLowerCase(), destination.toLowerCase(), cargo, pax);
       this.trackingData.next(data);
       await this._icp.startTracking();
       console.log('Tracking started');
     } catch (error) {
       console.error(error);
+      return;
     }
 
     // Tracking started, start flight reporting
-    const origin = this.freeFlightForm.get('origin').value as string;
-    const destination = this.freeFlightForm.get('destination').value as string;
-    const callSign = this.freeFlightForm.get('flightNo').value as string;
     try {
-      await this._progress.registerFlight(origin.toLowerCase(), destination.toLowerCase(), callSign, false);
+      await this._progress.registerFlight(origin.toLowerCase(), destination.toLowerCase(), callSign, cargo, pax, false);
       console.log('Flight registered');
       this._router.navigateByUrl('flight-progress')
     } catch (error) {

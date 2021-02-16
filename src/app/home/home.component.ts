@@ -4,7 +4,7 @@ import { Router } from '@angular/router';
 import { first } from 'rxjs/operators';
 import { IpcService } from '../ipc.service';
 import { LoadingService } from '../loading.service';
-import { Pilot, PilotService } from '../pilot.service';
+import { Pilot, PilotService, Rank } from '../pilot.service';
 
 @Component({
   selector: 'app-home',
@@ -14,6 +14,7 @@ import { Pilot, PilotService } from '../pilot.service';
 export class HomeComponent implements OnInit {
 
   pilot: Pilot
+  ranks = Rank;
 
   constructor(
     private _pilotService: PilotService,
@@ -22,11 +23,9 @@ export class HomeComponent implements OnInit {
     ) { }
 
   ngOnInit(): void {
-    this._loadingService.startLoading();
-    this._pilotService.getPilot('1').pipe(first()).subscribe((pilot) => {
+    this._pilotService.currentPilot.subscribe((pilot) => {
       this.pilot = pilot;
       this._changeDetectorRef.detectChanges();
-      this._loadingService.stopLoading();
-    })
+    });
   }
 }

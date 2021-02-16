@@ -3,6 +3,7 @@ import { Subscription } from 'rxjs';
 import { IpcService } from '../ipc.service';
 import { FlightProgressService } from '../flight-progress.service';
 import { ITrackingData } from '../../../trackingData.interface';
+import { flightStatus } from '../../../flightStatus';
 
 @Component({
   selector: 'app-flight-progress',
@@ -12,6 +13,7 @@ import { ITrackingData } from '../../../trackingData.interface';
 export class FlightProgressComponent implements OnInit, OnDestroy {
 
   currentData: ITrackingData;
+  flightStatus: flightStatus;
 
   distanceRemain: number = 0;
   timeRemain = 0;
@@ -23,6 +25,7 @@ export class FlightProgressComponent implements OnInit, OnDestroy {
   percentageCompletedRounded = 0;
 
   dataSubscription: undefined | Subscription;
+  flightStatusSub: undefined | Subscription;
 
   constructor(
     private _ipc: IpcService,
@@ -50,6 +53,15 @@ export class FlightProgressComponent implements OnInit, OnDestroy {
       }
       this.percentageCompletedRounded = Math.round(this.percentageCompleted * 100);
 
+      this._changeDetectorRef.detectChanges();
+    })
+
+    this.flightStatusSub = this._ipc.flightStatus.subscribe((data) => {
+      if (!data) {
+        return;
+      }
+
+      this.flightStatus = data;
       this._changeDetectorRef.detectChanges();
     })
   }

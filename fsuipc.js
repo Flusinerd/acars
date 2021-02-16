@@ -50,6 +50,7 @@ var FSUIPCInterface = /** @class */ (function () {
     function FSUIPCInterface(win) {
         this.win = win;
         this.flightStatus = new rxjs_1.BehaviorSubject(flightStatus_1.flightStatus.preDepature);
+        this.flightTrackingObs = new rxjs_1.BehaviorSubject(null);
         this._lastVsReadings = [];
         this.loggingFilePath = path_1.join(__dirname, 'flight.acars');
         this.didCrash = false;
@@ -63,7 +64,6 @@ var FSUIPCInterface = /** @class */ (function () {
         this.flightStatus.subscribe(function (status) {
             _this.win.webContents.send('flightStatus', status);
         });
-        console.log('Loggin Path', this.loggingFilePath);
     };
     FSUIPCInterface.prototype.connectToSim = function () {
         return __awaiter(this, void 0, void 0, function () {
@@ -71,6 +71,7 @@ var FSUIPCInterface = /** @class */ (function () {
             return __generator(this, function (_a) {
                 this._connectTimer = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
                     var isCrashed, error_1;
+                    var _this = this;
                     return __generator(this, function (_a) {
                         switch (_a.label) {
                             case 0:
@@ -79,12 +80,14 @@ var FSUIPCInterface = /** @class */ (function () {
                             case 1:
                                 _a.sent();
                                 this.connectionObs.next(true);
-                                this.flightTrackingObs = this._api.listen(3000, fsuipcStrings, true);
-                                console.log('Flight Tracking Obs set');
+                                this._api.listen(3000, fsuipcStrings, true).subscribe({
+                                    complete: function () { return _this.flightTrackingObs.complete(); },
+                                    error: function (x) { console.error('error', x); _this.handleFSUIPCError(x); },
+                                    next: function (x) { return _this.flightTrackingObs.next(x); }
+                                });
                                 return [4 /*yield*/, this.checkForCrash()];
                             case 2:
                                 isCrashed = _a.sent();
-                                console.log("🚀 ~ file: fsuipc.ts ~ line 62 ~ FSUIPCInterface ~ this._connectTimer=setInterval ~ isCrashed", isCrashed);
                                 if (isCrashed) {
                                     // Do stuff to handle crash
                                     this.handleCrash();
@@ -94,7 +97,7 @@ var FSUIPCInterface = /** @class */ (function () {
                                 return [3 /*break*/, 4];
                             case 3:
                                 error_1 = _a.sent();
-                                console.log('Connection error', error_1);
+                                console.log(error_1);
                                 if (error_1.code === 2 && this.connectionObs.getValue() === true) {
                                     this.connectionObs.next(false);
                                     console.log('Not connected');
@@ -171,6 +174,8 @@ var FSUIPCInterface = /** @class */ (function () {
                         this.fileHandle.write(this._startDate.valueOf() + '\n');
                         this.fileHandle.write(this.origin + '\n');
                         this.fileHandle.write(this.destination + '\n');
+                        this.fileHandle.write(this.cargo + '\n');
+                        this.fileHandle.write(this.pax + '\n');
                         this.fileHandle.write(this._statusToString(flightStatus_1.flightStatus.taxiOut) + '\n');
                         _j.label = 7;
                     case 7: return [3 /*break*/, 17];
@@ -296,16 +301,23 @@ var FSUIPCInterface = /** @class */ (function () {
                     case 17: return [2 /*return*/];
                 }
             });
-        }); }, function (error) {
-            // Error code 12 on disconnect
-            if (error.code === 12) {
-                // Disconected 
-                _this.connectionObs.next(false);
-                _this.connectToSim();
-            }
+        }); });
+    };
+    FSUIPCInterface.prototype.handleFSUIPCError = function (error) {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                console.log(error);
+                // Error code 12 on disconnect
+                if (error.code === 12) {
+                    // Disconected 
+                    this.connectionObs.next(false);
+                    this.connectToSim();
+                }
+                return [2 /*return*/];
+            });
         });
     };
-    FSUIPCInterface.prototype.canStartFreeFlight = function (type, flightNo, origin, destination) {
+    FSUIPCInterface.prototype.canStartFreeFlight = function (type, flightNo, origin, destination, cargo, pax) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
@@ -320,6 +332,8 @@ var FSUIPCInterface = /** @class */ (function () {
                             this.flightNumber = flightNo;
                             this.origin = origin;
                             this.destination = destination;
+                            this.cargo = cargo;
+                            this.pax = pax;
                             this._subscribeToTrackingObs();
                             this.flightTrackingObs.pipe(operators_1.first()).subscribe(function (currentInfo) {
                                 console.log('Current info', currentInfo);
@@ -340,7 +354,7 @@ var FSUIPCInterface = /** @class */ (function () {
             });
         });
     };
-    FSUIPCInterface.prototype.canStartFlight = function (type, flightNo, origin, destination) {
+    FSUIPCInterface.prototype.canStartFlight = function (type, flightNo, origin, destination, cargo, pax) {
         return __awaiter(this, void 0, void 0, function () {
             var _this = this;
             return __generator(this, function (_a) {
@@ -353,7 +367,7 @@ var FSUIPCInterface = /** @class */ (function () {
                                     switch (_a.label) {
                                         case 0:
                                             _a.trys.push([0, 2, , 3]);
-                                            return [4 /*yield*/, this.canStartFreeFlight(type, flightNo, origin, destination)];
+                                            return [4 /*yield*/, this.canStartFreeFlight(type, flightNo, origin, destination, cargo, pax)];
                                         case 1:
                                             _a.sent();
                                             return [3 /*break*/, 3];
@@ -426,13 +440,51 @@ var FSUIPCInterface = /** @class */ (function () {
         return "flightStatus;" + flightStatus;
     };
     FSUIPCInterface.prototype._parseLine = function (line) {
+        console.log('Test', 'Level Flight');
+        if (line.length === 0) {
+            return {
+                type: parseResultType.emptyLine,
+                value: undefined
+            };
+        }
         // Check if its a flightStatus or not
         if (line.includes('flightStatus')) {
             // Is Flight status. Split at ;
             var value = line.split(';')[1];
+            var returnValue = flightStatus_1.flightStatus.preDepature;
+            if (value === 'Taxi Out') {
+                returnValue = flightStatus_1.flightStatus.taxiOut;
+            }
+            else if (value === 'Depature') {
+                returnValue = flightStatus_1.flightStatus.depature;
+            }
+            else if (value === 'Climb') {
+                returnValue = flightStatus_1.flightStatus.climb;
+            }
+            else if (value === 'Level Flight') {
+                returnValue = flightStatus_1.flightStatus.levelFlight;
+            }
+            else if (value === 'Descent') {
+                returnValue = flightStatus_1.flightStatus.descent;
+            }
+            else if (value === 'Approach') {
+                returnValue = flightStatus_1.flightStatus.approach;
+            }
+            else if (value === 'Landing') {
+                returnValue = flightStatus_1.flightStatus.landing;
+            }
+            else if (value === 'Parked') {
+                returnValue = flightStatus_1.flightStatus.parked;
+            }
+            else if (value === 'Taxi To Parking') {
+                returnValue = flightStatus_1.flightStatus.taxiToParking;
+            }
+            else if (value === 'Go Around') {
+                returnValue = flightStatus_1.flightStatus.goAround;
+            }
             return {
                 type: parseResultType.flightStatus,
-                value: flightStatus_1.flightStatus[value]
+                value: returnValue
             };
         }
         else {
@@ -478,7 +530,7 @@ var FSUIPCInterface = /** @class */ (function () {
     // ACARS did crash. Send crash event to the client and resume the tracking
     FSUIPCInterface.prototype.handleCrash = function () {
         return __awaiter(this, void 0, void 0, function () {
-            var liner, line, result, value;
+            var liner, line, result;
             return __generator(this, function (_a) {
                 switch (_a.label) {
                     case 0:
@@ -486,22 +538,20 @@ var FSUIPCInterface = /** @class */ (function () {
                         liner = new lineByLine(this.loggingFilePath);
                         this.type = liner.next().toString();
                         this.flightNumber = liner.next().toString();
-                        this._startDate = new Date(liner.next().toString());
+                        this._startDate = new Date(+liner.next().toString());
                         this.origin = liner.next().toString();
                         this.destination = liner.next().toString();
+                        this.cargo = liner.next().toString();
+                        this.pax = liner.next().toString();
                         _a.label = 1;
                     case 1:
                         if (!(line = liner.next())) return [3 /*break*/, 3];
                         line = line.toString();
-                        return [4 /*yield*/, this._parseLine(line)];
+                        return [4 /*yield*/, this._parseLine(line.toString())];
                     case 2:
                         result = _a.sent();
-                        console.log(result);
                         if (result.type === parseResultType.flightStatus) {
-                            value = result.value;
-                            console.log("value", value);
-                            console.log('status', flightStatus_1.flightStatus[value]);
-                            this.flightStatus.next(flightStatus_1.flightStatus[value]);
+                            this.flightStatus.next(result.value);
                         }
                         return [3 /*break*/, 1];
                     case 3:
@@ -525,12 +575,16 @@ var FSUIPCInterface = /** @class */ (function () {
                             this._subscribeToTrackingObs();
                             clearInterval(this.recoveryInterval);
                             console.log('Flight recovered');
-                            this.win.webContents.send('recovery');
+                            setTimeout(this._sendRecovery.bind(this), 10000);
                         }
                         return [2 /*return*/];
                 }
             });
         });
+    };
+    FSUIPCInterface.prototype._sendRecovery = function () {
+        this.win.webContents.send('recovery', this.origin, this.destination, this.cargo, this.pax);
+        this.win.webContents.send('flightStatus', this.flightStatus.getValue());
     };
     return FSUIPCInterface;
 }());
@@ -550,11 +604,13 @@ var fsuipcStrings = [
     'planeOnground',
     'radioAlt',
     'flapsControl',
-    'landingLights'
+    'landingLights',
+    'aircraftName',
 ];
 var parseResultType;
 (function (parseResultType) {
     parseResultType[parseResultType["flightStatus"] = 0] = "flightStatus";
     parseResultType[parseResultType["postition"] = 1] = "postition";
+    parseResultType[parseResultType["emptyLine"] = 2] = "emptyLine";
 })(parseResultType || (parseResultType = {}));
 //# sourceMappingURL=fsuipc.js.map

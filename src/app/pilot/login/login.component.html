@@ -1,0 +1,24 @@
+<h2>Login</h2>
+<form [formGroup]="loginForm">
+
+  <div class="row">
+    <div class="input-group">
+      <input type="text" name="email" placeholder="&nbsp;" autocomplete="email" formControlName="email">
+      <label for="email">Email</label>
+      <span class="error-text" *ngIf="loginForm.get('email').invalid">Email not valid</span>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="input-group">
+      <input type="password" name="password" placeholder="&nbsp;" autocomplete="current-password" formControlName="password">
+      <label for="password">Password</label>
+      <span class="error-text" *ngIf="loginForm.get('password').hasError('required')">Required</span>
+    </div>
+  </div>
+
+  <span class="error-text" style="margin-bottom: 10px; font-size: large;" *ngIf="wrongCredentials">Email / Password wrong</span>
+
+  <button type="submit" [disabled]="!loginForm.valid" (click)="login()">Login</button>
+
+</form>

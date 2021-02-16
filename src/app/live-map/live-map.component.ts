@@ -92,23 +92,23 @@ export class LiveMapComponent implements OnInit, OnDestroy {
     const markerExists = this._getAirportMarker(airport);
     let marker: CircleMarker;
     if (!markerExists) {
-        marker = circleMarker([airport.lat, airport.long], {
+        marker = circleMarker([airport.latitude_deg, airport.longitude_deg], {
           color: '#d4641c',
           radius: 2,
-        }).bindTooltip(airport.icao, {direction: 'right'});
+        }).bindTooltip(airport.ident, {direction: 'right'});
   
       const options = marker.options as any;
-      options.icao = airport.icao;
+      options.ident = airport.ident;
     } else {
       marker = markerExists;
-      marker.setLatLng([airport.lat, airport.long]);
+      marker.setLatLng([airport.latitude_deg, airport.longitude_deg]);
     }
 
     this.layers.push(marker);
   }
 
   private _getAirportMarker(airport: IAirport): CircleMarker | undefined {
-    return this.layers.find((marker) => marker.options.icao === airport.icao && marker instanceof CircleMarker);
+    return this.layers.find((marker) => marker.options.ident === airport.ident && marker instanceof CircleMarker);
   }
 
   private _initFlight(flightData: Flight) {

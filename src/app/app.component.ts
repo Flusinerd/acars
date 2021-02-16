@@ -1,4 +1,4 @@
-import { AfterViewInit, ChangeDetectorRef, Component, OnDestroy } from '@angular/core';
+import { AfterViewInit, ChangeDetectorRef, Component, HostListener, OnDestroy } from '@angular/core';
 import { ElectronService } from './core/services';
 import { TranslateService } from '@ngx-translate/core';
 import { AppConfig } from '../environments/environment';
@@ -88,7 +88,7 @@ export class AppComponent implements OnDestroy, AfterViewInit {
     await this.ipc.startTracking();
     console.log('Tracking started');
     try {
-      await this._progress.registerFlight('eddf', 'eddl', 'MQT1922', false);
+      await this._progress.registerFlight('eddf', 'eddl', 'MQT1922',1000, 200,  false);
       console.log('Flight registered');
       this._router.navigateByUrl('flight-progress')
     } catch (error) {
@@ -106,5 +106,10 @@ export class AppComponent implements OnDestroy, AfterViewInit {
   async testSimbrief(){
     // this._simBriefService.simbriefsubmit('http://localhost:4200/callback', 'eddf', 'eddl', 'a320');
     console.log("🚀 ~ file: app.component.ts ~ line 109 ~ AppComponent ~ testSimbrief ~ await this._simBriefService.mockresponse();", await this._simBriefService.mockresponse())
+  }
+
+  @HostListener('window:beforeunload', [ '$event' ])
+  beforeUnloadHandler() {
+    this._socketStatus.onDisconnect()
   }
 }
